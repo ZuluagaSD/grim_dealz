@@ -8,7 +8,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ReferenceLine,
 } from 'recharts'
 import type { SerializedPricePoint } from '@/lib/types'
@@ -18,22 +17,24 @@ interface PriceHistoryChartProps {
   gwRrpUsd: number
 }
 
-// One color per store — ordered by first appearance
-const STORE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2']
+// Curated palette — hero (cheapest / first) gets strong blue, rest are harmonious Tailwind 500s
+const STORE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4']
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function formatPrice(value: number): string {
-  return `$${value.toFixed(2)}`
+function formatPriceTick(value: number): string {
+  return `$${value.toFixed(0)}`
 }
 
 export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChartProps) {
   if (points.length === 0) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-400">
-        Price history will appear here after a few scrape cycles.
+      <div className="flex h-44 items-center justify-center rounded-xl border border-gray-100 bg-gray-50">
+        <p className="text-sm text-gray-400">
+          Price history will appear after a few scrape cycles.
+        </p>
       </div>
     )
   }
@@ -81,67 +82,92 @@ export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChar
   const yMax = Math.ceil(gwRrpUsd * 1.05)
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-          <defs>
-            {storeOrder.map((slug, i) => (
-              <linearGradient key={slug} id={`grad-${slug}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={STORE_COLORS[i % STORE_COLORS.length]} stopOpacity={0.15} />
-                <stop offset="95%" stopColor={STORE_COLORS[i % STORE_COLORS.length]} stopOpacity={0} />
-              </linearGradient>
-            ))}
-          </defs>
-
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-
-          <XAxis
-            dataKey="date"
-            tickFormatter={formatDate}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
-            axisLine={false}
-            tickLine={false}
-            minTickGap={40}
-          />
-          <YAxis
-            tickFormatter={formatPrice}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
-            axisLine={false}
-            tickLine={false}
-            domain={[yMin, yMax]}
-            width={56}
-          />
-
-          <Tooltip
-            content={<CustomTooltip gwRrpUsd={gwRrpUsd} storeNames={storeNames} />}
-          />
-          <Legend
-            formatter={(value) => storeNames[value] ?? value}
-            wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-          />
-
-          {/* GW RRP reference line */}
-          <ReferenceLine
-            y={gwRrpUsd}
-            stroke="#9ca3af"
-            strokeDasharray="6 3"
-            label={{ value: `RRP $${gwRrpUsd.toFixed(0)}`, position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }}
-          />
-
-          {storeOrder.map((slug, i) => (
-            <Line
-              key={slug}
-              type="monotone"
-              dataKey={slug}
-              stroke={STORE_COLORS[i % STORE_COLORS.length]}
-              strokeWidth={2}
-              dot={{ r: 3, strokeWidth: 0, fill: STORE_COLORS[i % STORE_COLORS.length] }}
-              activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }}
-              connectNulls={false}
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      {/* Header: store legend pills + window label */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-5 py-3">
+        {storeOrder.map((slug, i) => (
+          <span
+            key={slug}
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+            style={{
+              backgroundColor: `${STORE_COLORS[i % STORE_COLORS.length]}18`,
+              color: STORE_COLORS[i % STORE_COLORS.length],
+            }}
+          >
+            <span
+              className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
+              style={{ backgroundColor: STORE_COLORS[i % STORE_COLORS.length] }}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+            {storeNames[slug]}
+          </span>
+        ))}
+        <span className="ml-auto text-xs font-medium text-gray-400">90 days</span>
+      </div>
+
+      {/* Chart */}
+      <div className="px-2 pb-4 pt-5">
+        <ResponsiveContainer width="100%" height={280}>
+          <LineChart data={chartData} margin={{ top: 4, right: 20, bottom: 0, left: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatDate}
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              axisLine={false}
+              tickLine={false}
+              minTickGap={48}
+            />
+            <YAxis
+              tickFormatter={formatPriceTick}
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              axisLine={false}
+              tickLine={false}
+              domain={[yMin, yMax]}
+              width={52}
+            />
+
+            <Tooltip
+              content={<CustomTooltip gwRrpUsd={gwRrpUsd} storeNames={storeNames} />}
+              cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+            />
+
+            {/* GW RRP reference line */}
+            <ReferenceLine
+              y={gwRrpUsd}
+              stroke="#d1d5db"
+              strokeDasharray="4 4"
+              label={{
+                value: `RRP $${gwRrpUsd.toFixed(0)}`,
+                position: 'insideTopLeft',
+                fontSize: 10,
+                fill: '#9ca3af',
+                fontWeight: 500,
+              }}
+            />
+
+            {storeOrder.map((slug, i) => (
+              <Line
+                key={slug}
+                type="monotone"
+                dataKey={slug}
+                stroke={STORE_COLORS[i % STORE_COLORS.length]}
+                strokeWidth={i === 0 ? 2.5 : 1.75}
+                dot={false}
+                activeDot={{
+                  r: 5,
+                  strokeWidth: 2,
+                  stroke: '#fff',
+                  fill: STORE_COLORS[i % STORE_COLORS.length],
+                }}
+                connectNulls={false}
+                animationDuration={700}
+                animationEasing="ease-out"
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
@@ -157,25 +183,51 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label, gwRrpUsd, storeNames }: CustomTooltipProps) {
   if (!active || !payload?.length || !label) return null
 
+  // Sort cheapest first so the best deal is always on top
+  const sorted = [...payload].sort((a, b) => a.value - b.value)
+  const bestPrice = sorted[0]?.value
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg">
-      <p className="mb-1.5 text-xs font-semibold text-gray-500">
-        {new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-      </p>
-      {payload.map((entry) => {
-        const savings = gwRrpUsd - entry.value
-        const discountPct = (savings / gwRrpUsd) * 100
-        return (
-          <div key={entry.dataKey} className="flex items-baseline gap-2">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-            <span className="text-xs text-gray-600">{storeNames[entry.dataKey] ?? entry.dataKey}</span>
-            <span className="ml-auto pl-4 text-xs font-bold text-gray-900">${entry.value.toFixed(2)}</span>
-            {savings > 0 && (
-              <span className="text-xs font-medium text-green-600">-{Math.round(discountPct)}%</span>
-            )}
-          </div>
-        )
-      })}
+    <div className="w-52 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
+      <div className="border-b border-gray-50 px-3 py-2">
+        <p className="text-xs font-semibold text-gray-500">
+          {new Date(label).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          })}
+        </p>
+      </div>
+      <div className="divide-y divide-gray-50 px-3 py-1">
+        {sorted.map((entry) => {
+          const savings = gwRrpUsd - entry.value
+          const discountPct = (savings / gwRrpUsd) * 100
+          const isBest = entry.value === bestPrice
+          return (
+            <div key={entry.dataKey} className="flex items-center gap-2 py-1.5">
+              <span
+                className="h-5 w-0.5 flex-shrink-0 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="min-w-0 flex-1 truncate text-xs text-gray-600">
+                {storeNames[entry.dataKey] ?? entry.dataKey}
+              </span>
+              <span className="text-xs font-bold text-gray-900">${entry.value.toFixed(2)}</span>
+              {savings > 0 && (
+                <span
+                  className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold"
+                  style={{
+                    backgroundColor: isBest ? '#dcfce7' : '#f0fdf4',
+                    color: isBest ? '#15803d' : '#16a34a',
+                  }}
+                >
+                  -{Math.round(discountPct)}%
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
