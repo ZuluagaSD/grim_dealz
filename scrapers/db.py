@@ -132,70 +132,66 @@ async def _upsert_one(
     in_stock = result.in_stock
     stock_status = result.stock_status.value  # str for psycopg
 
-    # 4. Upsert listing
-    await conn.execute(
-        """
-        INSERT INTO listings (
-            id, product_id, store_id,
-            store_product_url, store_sku,
-            current_price, discount_pct,
-            in_stock, stock_status,
-            affiliate_url,
-            last_scraped, last_checked_at
-        )
-        VALUES (
-            gen_random_uuid(), %s, %s,
-            %s, %s,
-            %s, %s,
-            %s, %s::\"StockStatus\",
-            %s,
-            NOW(), NOW()
-        )
-        ON CONFLICT (product_id, store_id) DO UPDATE SET
-            store_product_url  = EXCLUDED.store_product_url,
-            store_sku          = EXCLUDED.store_sku,
-            current_price      = EXCLUDED.current_price,
-            discount_pct       = EXCLUDED.discount_pct,
-            in_stock           = EXCLUDED.in_stock,
-            stock_status       = EXCLUDED.stock_status,
-            affiliate_url      = EXCLUDED.affiliate_url,
-            last_scraped       = NOW(),
-            last_checked_at    = NOW()
-        RETURNING id, current_price, stock_status
-        """,
-        (
-            product_id, store_id,
-            result.store_product_url, result.store_sku,
-            current_price, discount_pct,
-            in_stock, stock_status,
-            result.affiliate_url,
-        ),
-    )
-    stats.upserted += 1
-
-    # 5. Fetch current listing state to check if price/stock changed
+    # 4. Fetch existing listing BEFORE upsert so we can detect changes
     existing = await (
         await conn.execute(
-            """
-            SELECT l.id, l.current_price, l.stock_status
-            FROM   listings l
-            WHERE  l.product_id = %s AND l.store_id = %s
-            """,
+            "SELECT id, current_price, stock_status FROM listings WHERE product_id = %s AND store_id = %s",
             (product_id, store_id),
         )
     ).fetchone()
 
     if existing is None:
-        # Brand new listing — always write first price_history row
-        listing_id: str = existing[0] if existing else ""
-        price_changed = True
+        price_changed = True  # brand new listing — always record initial price
     else:
-        listing_id = existing[0]
         prev_price = Decimal(str(existing[1]))
         prev_status: str = existing[2]
         price_changed = prev_price != current_price or prev_status != stock_status
 
-    if price_changed and listing_id:
+    # 5. Upsert listing; get listing_id from RETURNING
+    upsert_row = await (
+        await conn.execute(
+            """
+            INSERT INTO listings (
+                id, product_id, store_id,
+                store_product_url, store_sku,
+                current_price, discount_pct,
+                in_stock, stock_status,
+                affiliate_url,
+                last_scraped, last_checked_at
+            )
+            VALUES (
+                gen_random_uuid(), %s, %s,
+                %s, %s,
+                %s, %s,
+                %s, %s::\"StockStatus\",
+                %s,
+                NOW(), NOW()
+            )
+            ON CONFLICT (product_id, store_id) DO UPDATE SET
+                store_product_url  = EXCLUDED.store_product_url,
+                store_sku          = EXCLUDED.store_sku,
+                current_price      = EXCLUDED.current_price,
+                discount_pct       = EXCLUDED.discount_pct,
+                in_stock           = EXCLUDED.in_stock,
+                stock_status       = EXCLUDED.stock_status,
+                affiliate_url      = EXCLUDED.affiliate_url,
+                last_scraped       = NOW(),
+                last_checked_at    = NOW()
+            RETURNING id
+            """,
+            (
+                product_id, store_id,
+                result.store_product_url, result.store_sku,
+                current_price, discount_pct,
+                in_stock, stock_status,
+                result.affiliate_url,
+            ),
+        )
+    ).fetchone()
+    listing_id: str = upsert_row[0]  # type: ignore[index]
+    stats.upserted += 1
+
+    if price_changed:
         await conn.execute(
             """
             INSERT INTO price_history (id, listing_id, price, discount_pct, in_stock, scraped_at)
