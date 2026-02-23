@@ -50,8 +50,9 @@ _AFFILIATE_TAG = os.environ.get("AFFILIATE_DISCOUNT_GAMES_INC")
 # Product page fetches: 4 concurrent, 0.5 s polite delay per slot
 _CONCURRENCY = 4
 _PRODUCT_SLEEP = 0.5
-# Category page fetches are sequential per category; 1 s between pages
-_PAGE_SLEEP = 1.0
+# Category pagination: 3 categories scraped concurrently; 0.5 s between page fetches per category
+_CAT_CONCURRENCY = 3
+_PAGE_SLEEP = 0.5
 
 
 def _parse_item_number(mpn: str) -> str | None:
@@ -124,46 +125,60 @@ def _parse_product_page(html: str, url: str) -> PriceResult | None:
 class DiscountGamesIncScraper(BaseStore):
     store_slug = "discount-games-inc"
 
-    async def _collect_product_urls(self) -> set[str]:
-        """Paginate all GW category pages and return deduplicated product URLs."""
-        collected: set[str] = set()
+    async def _paginate_category(
+        self, category_path: str, sem: asyncio.Semaphore
+    ) -> set[str]:
+        """Paginate one category, return all unique product URLs found.
 
-        for category_path in _CATEGORIES:
-            page = 1
-            while True:
-                if page == 1:
-                    url = f"{_BASE_URL}{category_path}"
-                else:
-                    path = category_path.rstrip("/")
-                    url = f"{_BASE_URL}{path}/page{page}.html"
+        Stops when a page produces zero new URLs (DGI loops the last real page
+        for any out-of-bounds page number, so empty-page detection isn't enough).
+        """
+        category_urls: set[str] = set()
+        page = 1
 
-                try:
+        while True:
+            url = (
+                f"{_BASE_URL}{category_path}"
+                if page == 1
+                else f"{_BASE_URL}{category_path.rstrip('/')}/page{page}.html"
+            )
+            try:
+                async with sem:
                     resp = await self.get(url)
-                    soup = BeautifulSoup(resp.text, "html.parser")
 
-                    page_urls = {
-                        tag["data-url"]
-                        for tag in soup.find_all(attrs={"data-url": True})
-                        if "discountgamesinc.com/" in tag.get("data-url", "")
-                    }
-                    if not page_urls:
-                        break  # no products on this page — end of pagination
+                soup = BeautifulSoup(resp.text, "html.parser")
+                page_urls = {
+                    tag["data-url"]
+                    for tag in soup.find_all(attrs={"data-url": True})
+                    if "discountgamesinc.com/" in tag.get("data-url", "")
+                }
+                new = page_urls - category_urls
+                if not new:
+                    break  # no new products — reached end of real catalog
 
-                    new = page_urls - collected
-                    collected.update(page_urls)
-                    logger.debug(
-                        "[discount-games-inc] %s p%d: %d URLs (%d new)",
-                        category_path, page, len(page_urls), len(new),
-                    )
-                    page += 1
-                    await asyncio.sleep(_PAGE_SLEEP)
+                category_urls.update(new)
+                logger.debug(
+                    "[discount-games-inc] %s p%d: +%d new (total %d)",
+                    category_path, page, len(new), len(category_urls),
+                )
+                page += 1
+                await asyncio.sleep(_PAGE_SLEEP)
 
-                except Exception as exc:
-                    logger.warning(
-                        "[discount-games-inc] Error fetching %s: %s", url, exc
-                    )
-                    break
+            except Exception as exc:
+                logger.warning(
+                    "[discount-games-inc] Error fetching %s: %s", url, exc
+                )
+                break
 
+        return category_urls
+
+    async def _collect_product_urls(self) -> set[str]:
+        """Collect all GW product URLs across all categories (parallel)."""
+        sem = asyncio.Semaphore(_CAT_CONCURRENCY)
+        per_cat = await asyncio.gather(
+            *[self._paginate_category(path, sem) for path in _CATEGORIES]
+        )
+        collected = set().union(*per_cat)
         logger.info("[discount-games-inc] %d unique product URLs collected", len(collected))
         return collected
 
