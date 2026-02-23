@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Cinzel } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import MobileNav from '@/components/client/MobileNav'
 
@@ -76,6 +77,7 @@ export default function RootLayout({
         </header>
 
         <main>{children}</main>
+        <Analytics />
 
         <footer className="mt-16 border-t border-ink-rim bg-ink py-10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
