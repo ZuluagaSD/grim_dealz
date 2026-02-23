@@ -44,19 +44,28 @@ Tags: `products`, `listings`, `deals`, `factions`
 
 ### Decimal Serialization
 
-Prisma returns `Decimal` objects. **Always call `.toNumber()` in `data.ts`** — never pass raw Prisma types to components.
+Prisma returns `Decimal` objects, but `unstable_cache` JSON-stringifies results — after deserialization, Decimal fields come back as **strings** (e.g., `"35.00"`). `.toNumber()` fails on strings.
+
+**Always use `toNum()` in `data.ts`** — it handles Decimal, string, and number:
 
 ```typescript
-// ✅ In data.ts
-gwRrpUsd: product.gwRrpUsd.toNumber(),
-currentPrice: listing.currentPrice.toNumber(),
-discountPct: listing.discountPct.toNumber(),
+// web/lib/data.ts — eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toNum(v: any): number {
+  if (typeof v === 'number') return v
+  if (typeof v === 'string') return parseFloat(v)
+  if (v !== null && typeof v.toNumber === 'function') return v.toNumber()
+  return Number(v)
+}
 
-// ✅ Components receive plain numbers
-type SerializedListing = { currentPrice: number; discountPct: number; ... }
+// ✅ Use in serialization helpers
+gwRrpUsd: toNum(product.gwRrpUsd),
+currentPrice: toNum(listing.currentPrice),
 
-// ❌ Never
-<PriceCard price={listing.currentPrice} />  // Decimal, not number
+// ✅ In page components — use Number() for one-off conversions
+gwRrpUsd={Number(product.gwRrpUsd)}
+
+// ❌ Never in components or pages
+product.gwRrpUsd.toNumber()  // fails when value is a string post-cache
 ```
 
 ### Affiliate Redirect Pattern
@@ -146,7 +155,14 @@ Never store `gw_rrp_usd` on `listings` (was removed as a schema bloat issue).
 
 ## Python Conventions
 
-- Python 3.11+, `uv` for dependency management
+- Python 3.12, `uv` for dependency management
+- **Windows only:** psycopg3 async requires `SelectorEventLoop` (ProactorEventLoop, default in 3.12, is incompatible):
+  ```python
+  if sys.platform == "win32":
+      asyncio.run(main(), loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()))
+  else:
+      asyncio.run(main())
+  ```
 - Type annotations on all public functions
 - `StockStatus` is `StrEnum` in `base_store.py` — values must match Prisma schema exactly
 - All scrapers are `async with` context managers extending `BaseStore`

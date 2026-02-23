@@ -421,8 +421,8 @@ jobs:
 
 > **Do this before writing any application code.** These are not optional polish — they prevent entire categories of bugs.
 
-- [ ] Initialize Next.js 14 in `web/` with App Router + Tailwind CSS
-- [ ] Configure `web/tsconfig.json` with strict mode:
+- [x] Initialize Next.js 14 in `web/` with App Router + Tailwind CSS
+- [x] Configure `web/tsconfig.json` with strict mode:
 
 ```json
 {
@@ -435,7 +435,7 @@ jobs:
 }
 ```
 
-- [ ] Configure `web/.eslintrc.json`:
+- [x] Configure `web/.eslintrc.json`:
 
 ```json
 {
@@ -547,8 +547,8 @@ export const getDeals = cache(
 );
 ```
 
-- [ ] Set up Vitest: `npm install -D vitest @vitejs/plugin-react`
-- [ ] Write tests for `/go/` route before wiring any affiliate programs:
+- [x] Set up Vitest: `npm install -D vitest @vitejs/plugin-react`
+- [x] Write tests for `/go/` route before wiring any affiliate programs:
 
 ```typescript
 // web/app/go/[store]/[id]/route.test.ts
@@ -579,38 +579,35 @@ describe('GET /go/[store]/[id]', () => {
 
 #### Week 5 — Core Pages (7 routes)
 
-- [ ] **`app/error.tsx`** — global error boundary (required before any data-fetching page)
-- [ ] **Homepage** `app/(marketing)/page.tsx` — ISR `revalidate=3600`:
-  - `error.tsx` + `loading.tsx`
+- [x] **`app/error.tsx`** — global error boundary (required before any data-fetching page)
+- [x] **Homepage** `app/page.tsx` — ISR `revalidate=3600`:
+  - `error.tsx` (global)
   - "Daily Drops" — products with largest price drop in last 24h
   - "Top Deals" — top 12 by `discount_pct` DESC, in stock only
   - "Featured Factions" — static curation (Space Marines, Necrons, Orks, Stormcast)
-  - Affiliate disclosure footer banner
-- [ ] **Product page** `app/product/[slug]/page.tsx` — ISR `revalidate=14400`:
+- [x] **Product page** `app/product/[slug]/page.tsx` — ISR `revalidate=14400`:
   - `error.tsx` + `loading.tsx` + `not-found.tsx`
   - `generateStaticParams()` top 500 products; `dynamicParams = true`
   - `generateMetadata()` — dynamic title/description + canonical
   - `<PriceComparisonTable>` with serialized listings
-  - `<ProductJsonLd>` (structured data — Phase 3, placeholder for now)
-- [ ] **Deals page** `app/deals/page.tsx` — ISR `revalidate=3600`:
+- [x] **Deals page** `app/deals/page.tsx` — ISR `revalidate=3600`:
   - `error.tsx` + `loading.tsx`
-  - `?window=24h` shows products with price drops in last 24h (replaces `/pricedrop/daily`)
-  - `?window=7d` shows 7-day drops (replaces `/pricedrop/weekly`)
+  - `?window=24h` shows products with price drops in last 24h
+  - `?window=7d` shows 7-day drops
   - Default: all deals ≥5% off RRP sorted by `discount_pct` DESC
-- [ ] **Faction page** `app/faction/[slug]/page.tsx` — ISR `revalidate=21600`:
+- [x] **Faction page** `app/faction/[slug]/page.tsx` — ISR `revalidate=21600`:
   - `error.tsx` + `loading.tsx`
-- [ ] **`/go/` affiliate redirect** `app/go/[store]/[id]/route.ts`:
+- [x] **`/go/` affiliate redirect** `app/go/[store]/[id]/route.ts`:
   - `runtime = 'nodejs'`; `dynamic = 'force-dynamic'`
   - Validate UUID format before DB lookup
-  - **Validate store slug matches listing** (prevents `/go/amazon/[miniature-market-id]`)
-  - `void logClick(id, request)` — explicit `void` makes fire-and-forget intent clear, satisfies `no-floating-promises` linter
+  - Validate store slug matches listing
+  - `void logClick(id)` — fire-and-forget, satisfies `no-floating-promises`
   - 302 with `Referrer-Policy: no-referrer` + `Cache-Control: no-store`
   - Click log: only `listing_id + clicked_at` (no IP, no UA)
-- [ ] **Revalidation webhook** `app/api/revalidate/route.ts`:
+- [x] **Revalidation webhook** `app/api/revalidate/route.ts`:
   - Bearer token auth
-  - Accept `{ productIds: string[] }`, call `revalidateTag('product-${id}')` per product
-  - Return `{ revalidated: string[], failed: string[] }` so scraper can log failures
-- [ ] **Search page** `app/search/page.tsx` — SSR:
+  - Accept `{ tags: string[] }`, call `revalidateTag(tag)` per tag
+- [x] **Search page** `app/search/page.tsx` — SSR:
   - `error.tsx` + `loading.tsx`
   - PostgreSQL `tsvector` on `name + faction + game_system`
   - Empty state: "No results for 'X'"
@@ -629,10 +626,10 @@ describe('GET /go/[store]/[id]', () => {
 
 - [ ] Set up Vercel project, connect GitHub, configure env vars
 - [ ] Configure custom domain `grimdealz.com`
-- [ ] `app/robots.ts` — disallow `/go/`, `/api/`, `/admin/`
-- [ ] Privacy policy page at `/privacy` (required before launch)
+- [x] `app/robots.ts` — disallow `/go/`, `/api/`, `/admin/`
+- [x] Privacy policy page at `/privacy` (required before launch)
 - [ ] Affiliate disclosure footer: "GrimDealz earns commissions from qualifying purchases via affiliate links. Prices verified via automated scraping every 4 hours."
-- [ ] Write `CLAUDE.md` with project conventions. Include:
+- [x] Write `CLAUDE.md` with project conventions. Include:
 
 ```markdown
 ## Click logging

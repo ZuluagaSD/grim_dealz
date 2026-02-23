@@ -5,7 +5,7 @@ export type ProductWithListings = Prisma.ProductGetPayload<{
   include: {
     listings: {
       include: { store: true }
-      orderBy: { current_price: 'asc' }
+      orderBy: { currentPrice: 'asc' }
     }
   }
 }>
@@ -16,9 +16,9 @@ export type GetDealsOptions = {
   inStockOnly?: boolean
   limit?: number
   offset?: number
-  faction?: string
-  gameSystem?: string
-  window?: '24h' | '7d'
+  faction?: string | undefined
+  gameSystem?: string | undefined
+  window?: '24h' | '7d' | undefined
 }
 
 // Serialized form safe for components — Decimal converted to number, no Prisma types

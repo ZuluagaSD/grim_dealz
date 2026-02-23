@@ -11,9 +11,23 @@ import type {
 
 // ─────────────────────────────────────────
 // Serialization helpers
-// Prisma returns Decimal objects. Always call .toNumber() here.
-// Never pass Prisma Decimal or Date types to React components.
+// Prisma Decimal objects serialize to strings when JSON-stringified by
+// unstable_cache. Use toNum() everywhere — it handles Decimal, string, or number.
 // ─────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toNum(v: any): number {
+  if (typeof v === 'number') return v
+  if (typeof v === 'string') return parseFloat(v)
+  if (v !== null && typeof v.toNumber === 'function') return v.toNumber() as number
+  return Number(v)
+}
+
+function toIso(v: Date | string | null | undefined): string {
+  if (!v) return new Date(0).toISOString()
+  if (typeof v === 'string') return v
+  return v.toISOString()
+}
 
 function serializeListing(
   listing: ProductWithListings['listings'][number]
@@ -22,13 +36,13 @@ function serializeListing(
     id: listing.id,
     storeSlug: listing.store.slug,
     storeName: listing.store.name,
-    currentPrice: listing.currentPrice.toNumber(),
-    discountPct: listing.discountPct.toNumber(),
+    currentPrice: toNum(listing.currentPrice),
+    discountPct: toNum(listing.discountPct),
     inStock: listing.inStock,
     stockStatus: listing.stockStatus,
     affiliateUrl: listing.affiliateUrl,
     storeProductUrl: listing.storeProductUrl,
-    lastCheckedAt: listing.lastCheckedAt?.toISOString() ?? new Date(0).toISOString(),
+    lastCheckedAt: toIso(listing.lastCheckedAt),
   }
 }
 
@@ -42,16 +56,16 @@ function productToCardData(
     name: product.name,
     faction: product.faction,
     imageUrl: product.imageUrl,
-    gwRrpUsd: product.gwRrpUsd.toNumber(),
+    gwRrpUsd: toNum(product.gwRrpUsd),
     cheapestListing: cheapest
       ? {
-          currentPrice: cheapest.currentPrice.toNumber(),
-          discountPct: cheapest.discountPct.toNumber(),
+          currentPrice: toNum(cheapest.currentPrice),
+          discountPct: toNum(cheapest.discountPct),
           storeName: cheapest.store.name,
           storeSlug: cheapest.store.slug,
           listingId: cheapest.id,
           inStock: cheapest.inStock,
-          lastCheckedAt: cheapest.lastCheckedAt?.toISOString() ?? new Date(0).toISOString(),
+          lastCheckedAt: toIso(cheapest.lastCheckedAt),
           isAllTimeLow,
         }
       : null,
@@ -161,8 +175,8 @@ export const getDeals = cache(
       const items = products
         .filter((p) => p.listings.length > 0)
         .sort((a, b) => {
-          const aDisc = a.listings[0]?.discountPct.toNumber() ?? 0
-          const bDisc = b.listings[0]?.discountPct.toNumber() ?? 0
+          const aDisc = toNum(a.listings[0]?.discountPct) ?? 0
+          const bDisc = toNum(b.listings[0]?.discountPct) ?? 0
           return bDisc - aDisc
         })
         .map((p) => ({
