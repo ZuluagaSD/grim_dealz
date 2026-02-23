@@ -1,3 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #0c0c0c;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    color: #e8e0d0;
+  }
+
+  /* Scrollbar — dark theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #141414;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #c9a84c44;
+  }
+
+  /* Focus ring — gold */
+  *:focus-visible {
+    outline: 2px solid #c9a84c66;
+    outline-offset: 2px;
+  }
+}

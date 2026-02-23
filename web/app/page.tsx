@@ -6,35 +6,58 @@ import { getHomepageData } from '@/lib/data'
 export const revalidate = 3600
 
 const FEATURED_FACTIONS = [
-  { name: 'Space Marines', slug: 'space-marines', emoji: '🛡️' },
-  { name: 'Necrons', slug: 'necrons', emoji: '💀' },
-  { name: 'Orks', slug: 'orks', emoji: '⚔️' },
-  { name: 'Stormcast Eternals', slug: 'stormcast-eternals', emoji: '⚡' },
+  { name: 'Space Marines', slug: 'space-marines', color: '#4a7fd4' },
+  { name: 'Necrons', slug: 'necrons', color: '#4ade80' },
+  { name: 'Orks', slug: 'orks', color: '#86efac' },
+  { name: 'Stormcast Eternals', slug: 'stormcast-eternals', color: '#fbbf24' },
 ]
 
 export default async function HomePage() {
   const { topDeals, dailyDrops } = await getHomepageData()
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       {/* Hero */}
-      <section className="text-center py-12">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-          Best Warhammer Prices — Instantly
-        </h1>
-        <p className="mt-4 text-xl text-gray-600">
-          Compare prices across 10+ authorized US retailers. Save up to 25% off GW RRP.
+      <section className="relative overflow-hidden py-16 text-center sm:py-20">
+        {/* Atmospheric glow — no external images */}
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse 70% 50% at 50% 60%, rgba(201,168,76,0.08) 0%, transparent 70%)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse 80% 40% at 50% 110%, rgba(183,28,28,0.12) 0%, transparent 60%)',
+            }}
+          />
+        </div>
+
+        <p className="relative mb-3 text-xs font-medium uppercase tracking-[0.2em] text-gold/70">
+          Warhammer Price Intelligence
         </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <h1 className="font-cinzel relative text-4xl font-bold tracking-tight text-bone sm:text-5xl lg:text-6xl">
+          Best Prices.{' '}
+          <span className="text-gold">Every Realm.</span>
+        </h1>
+        <p className="relative mt-5 text-lg text-bone-muted">
+          Compare 10+ authorized US retailers instantly. Save up to 25% off GW RRP.
+        </p>
+
+        <div className="relative mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link
             href="/deals"
-            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-base font-semibold text-white hover:bg-blue-700"
+            className="inline-flex items-center justify-center rounded-lg bg-gold px-8 py-3 text-base font-semibold text-ink transition-all hover:bg-gold-light hover:shadow-gold-glow"
           >
-            See All Deals
+            See All Deals →
           </Link>
           <Link
             href="/search"
-            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-6 py-3 text-base font-semibold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center justify-center rounded-lg border border-ink-rim bg-ink-card px-8 py-3 text-base font-semibold text-bone transition-all hover:border-gold/30 hover:bg-ink-raised"
           >
             Search Products
           </Link>
@@ -43,10 +66,12 @@ export default async function HomePage() {
 
       {/* Daily Drops */}
       {dailyDrops.length > 0 && (
-        <section className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">🔥 Daily Drops</h2>
-            <Link href="/deals?window=24h" className="text-sm text-blue-600 hover:underline">
+        <section className="mt-4 pb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-bone">
+              <span className="mr-2 text-red-400">🔥</span>Daily Drops
+            </h2>
+            <Link href="/deals?window=24h" className="text-sm text-gold/70 transition-colors hover:text-gold">
               See all →
             </Link>
           </div>
@@ -60,10 +85,10 @@ export default async function HomePage() {
 
       {/* Top Deals */}
       {topDeals.length > 0 ? (
-        <section className="mt-12">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Top Deals</h2>
-            <Link href="/deals" className="text-sm text-blue-600 hover:underline">
+        <section className="mt-8 pb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-bone">Top Deals</h2>
+            <Link href="/deals" className="text-sm text-gold/70 transition-colors hover:text-gold">
               See all →
             </Link>
           </div>
@@ -74,48 +99,65 @@ export default async function HomePage() {
           </div>
         </section>
       ) : (
-        <section className="mt-12 rounded-lg bg-yellow-50 border border-yellow-200 p-6 text-center">
-          <p className="text-yellow-800 font-medium">
-            🚧 Scrapers are running — prices loading soon.
+        <section className="mt-8 rounded-lg border border-gold/20 bg-gold-dim p-6 text-center">
+          <p className="font-medium text-gold">
+            ⚙ Scrapers are running — prices loading soon.
           </p>
-          <p className="mt-1 text-sm text-yellow-600">
-            Check back in a few hours once affiliate scrapers complete their first run.
+          <p className="mt-1 text-sm text-bone-muted">
+            Check back in a few hours once scrapers complete their first run.
           </p>
         </section>
       )}
 
       {/* Featured Factions */}
-      <section className="mt-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Browse by Faction</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <section className="mt-8 pb-8">
+        <h2 className="mb-4 text-xl font-bold text-bone">Browse by Faction</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {FEATURED_FACTIONS.map((f) => (
             <Link
               key={f.slug}
               href={`/faction/${f.slug}`}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 hover:border-blue-400 hover:shadow-sm transition-all"
+              className="group flex items-center gap-3 rounded-lg border border-ink-rim bg-ink-card p-4 transition-all hover:border-ink-high hover:bg-ink-raised"
             >
-              <span className="text-2xl">{f.emoji}</span>
-              <span className="font-medium text-gray-900">{f.name}</span>
+              <span
+                className="h-3 w-3 flex-shrink-0 rounded-full transition-shadow group-hover:shadow-[0_0_8px_currentColor]"
+                style={{ backgroundColor: f.color, color: f.color }}
+              />
+              <span className="text-sm font-medium text-bone-muted transition-colors group-hover:text-bone">
+                {f.name}
+              </span>
             </Link>
           ))}
         </div>
       </section>
 
       {/* How it works */}
-      <section className="mt-16 rounded-xl bg-gray-50 p-8">
-        <h2 className="text-xl font-bold text-gray-900 text-center mb-6">How GrimDealz Works</h2>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <section className="mt-4 mb-8 rounded-xl border border-ink-rim bg-ink-card p-8">
+        <h2 className="mb-8 text-center text-lg font-bold uppercase tracking-widest text-bone-faint">
+          How It Works
+        </h2>
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
           {[
-            { step: '1', title: 'We scrape 10+ stores', desc: 'Every 4 hours, scrapers check authorized GW retailers for price changes.' },
-            { step: '2', title: 'You see the cheapest price', desc: 'All prices normalized and compared against GW RRP in one table.' },
-            { step: '3', title: 'Click to buy', desc: 'Links go directly to the retailer. We earn a small affiliate commission.' },
+            {
+              step: '01',
+              title: 'We scrape 10+ stores',
+              desc: 'Every 4 hours, scrapers check authorized GW retailers for price changes.',
+            },
+            {
+              step: '02',
+              title: 'You see the cheapest price',
+              desc: 'All prices normalized and compared against GW RRP in one table.',
+            },
+            {
+              step: '03',
+              title: 'Click to buy',
+              desc: 'Links go directly to the retailer. We earn a small affiliate commission.',
+            },
           ].map((item) => (
             <div key={item.step} className="text-center">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
-                {item.step}
-              </div>
-              <h3 className="font-semibold text-gray-900">{item.title}</h3>
-              <p className="mt-1 text-sm text-gray-600">{item.desc}</p>
+              <p className="font-cinzel mb-3 text-3xl font-bold text-gold/30">{item.step}</p>
+              <h3 className="font-semibold text-bone">{item.title}</h3>
+              <p className="mt-1.5 text-sm text-bone-muted">{item.desc}</p>
             </div>
           ))}
         </div>

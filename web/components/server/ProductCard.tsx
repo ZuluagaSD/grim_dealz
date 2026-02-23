@@ -6,13 +6,40 @@ interface ProductCardProps {
   product: ProductCardData
 }
 
+// Faction → accent color map (bright enough for dark bg)
+const FACTION_COLORS: Record<string, string> = {
+  'space marines': '#4a7fd4',
+  necrons: '#4ade80',
+  orks: '#86efac',
+  'chaos space marines': '#f87171',
+  'death guard': '#a3e635',
+  'thousand sons': '#c084fc',
+  chaos: '#f87171',
+  eldar: '#c084fc',
+  aeldari: '#c084fc',
+  tau: '#38bdf8',
+  "t'au empire": '#38bdf8',
+  tyranids: '#fb923c',
+  'stormcast eternals': '#fbbf24',
+  'adepta sororitas': '#f87171',
+  'adeptus mechanicus': '#fb923c',
+  'grey knights': '#94a3b8',
+  drukhari: '#c084fc',
+  'dark angels': '#4ade80',
+}
+
+function getFactionColor(faction: string): string {
+  return FACTION_COLORS[faction.toLowerCase()] ?? '#a09880'
+}
+
 export default function ProductCard({ product }: ProductCardProps) {
   const { cheapestListing } = product
+  const factionColor = getFactionColor(product.faction)
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div className="group relative flex flex-col overflow-hidden rounded-lg border border-ink-rim bg-ink-card transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-high hover:shadow-lg hover:shadow-black/40">
       {/* Product image */}
-      <div className="relative h-48 bg-gray-100">
+      <div className="relative h-48 bg-ink-raised">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -22,7 +49,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-gray-400">
+          <div className="flex h-full items-center justify-center text-bone-faint">
             <svg
               className="h-16 w-16"
               fill="none"
@@ -42,14 +69,14 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Discount badge */}
         {cheapestListing && cheapestListing.discountPct >= 5 && (
-          <div className="absolute left-2 top-2 rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+          <div className="absolute left-2 top-2 rounded bg-red-500/90 px-2 py-0.5 text-xs font-bold text-white">
             {Math.round(cheapestListing.discountPct)}% OFF
           </div>
         )}
 
         {/* All-time low badge */}
         {cheapestListing?.isAllTimeLow && (
-          <div className="absolute right-2 top-2 rounded bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+          <div className="absolute right-2 top-2 rounded bg-gold px-2 py-0.5 text-xs font-bold text-ink">
             All-Time Low
           </div>
         )}
@@ -57,12 +84,15 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       {/* Product details */}
       <div className="flex flex-1 flex-col p-3">
-        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <p
+          className="mb-1 text-xs font-medium uppercase tracking-wide"
+          style={{ color: factionColor }}
+        >
           {product.faction}
         </p>
         <Link
           href={`/product/${product.slug}`}
-          className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 line-clamp-2"
+          className="text-sm font-semibold text-bone line-clamp-2 transition-colors group-hover:text-gold"
         >
           {product.name}
           <span className="absolute inset-0" aria-hidden="true" />
@@ -72,25 +102,25 @@ export default function ProductCard({ product }: ProductCardProps) {
           {cheapestListing ? (
             <div className="flex items-baseline justify-between">
               <div>
-                <span className="text-lg font-bold text-gray-900">
+                <span className="text-lg font-bold text-bone">
                   ${cheapestListing.currentPrice.toFixed(2)}
                 </span>
                 {cheapestListing.discountPct > 0 && (
-                  <span className="ml-1 text-xs text-gray-400 line-through">
+                  <span className="ml-1 text-xs text-bone-faint line-through">
                     ${product.gwRrpUsd.toFixed(2)}
                   </span>
                 )}
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-bone-faint">
                 {cheapestListing.storeName}
               </span>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No prices available</p>
+            <p className="text-sm text-bone-faint">No prices available</p>
           )}
 
           {!cheapestListing?.inStock && cheapestListing && (
-            <p className="mt-1 text-xs text-orange-600">Out of stock</p>
+            <p className="mt-1 text-xs text-orange-400">Out of stock</p>
           )}
         </div>
       </div>

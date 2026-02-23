@@ -41,17 +41,17 @@ export default async function DealsPage({
   })
 
   const title = window === '24h'
-    ? '🔥 Daily Price Drops'
+    ? 'Daily Price Drops'
     : window === '7d'
-    ? '📉 7-Day Price Drops'
-    : '🏷️ Best Deals'
+    ? '7-Day Price Drops'
+    : 'Best Deals'
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-        <p className="mt-1 text-gray-600">
-          {deals.length} products found at discount vs GW RRP
+        <h1 className="text-3xl font-bold text-bone">{title}</h1>
+        <p className="mt-1 text-sm text-bone-muted">
+          {deals.length} products at discount vs GW RRP
         </p>
       </div>
 
@@ -70,10 +70,10 @@ export default async function DealsPage({
             <a
               key={tab.href}
               href={tab.href}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-gold text-ink shadow-gold-glow'
+                  : 'border border-ink-rim bg-ink-card text-bone-muted hover:border-gold/30 hover:bg-ink-raised hover:text-bone'
               }`}
             >
               {tab.label}
@@ -83,9 +83,9 @@ export default async function DealsPage({
       </div>
 
       {deals.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 p-12 text-center text-gray-500">
-          <p className="text-lg font-medium">No deals found</p>
-          <p className="mt-1 text-sm">
+        <div className="rounded-lg border border-ink-rim bg-ink-card p-12 text-center">
+          <p className="text-lg font-medium text-bone">No deals found</p>
+          <p className="mt-1 text-sm text-bone-muted">
             {window
               ? 'No price drops in this time window yet.'
               : 'Scrapers are still gathering prices. Check back soon.'}

@@ -53,19 +53,22 @@ export default async function ProductPage({
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Breadcrumb */}
-      <nav className="mb-6 text-sm text-gray-500">
-        <a href="/" className="hover:text-gray-700">Home</a>
-        {' / '}
-        <a href={`/faction/${product.faction.toLowerCase().replace(/\s+/g, '-')}`} className="hover:text-gray-700">
+      <nav className="mb-6 flex items-center gap-1.5 text-sm text-bone-faint">
+        <a href="/" className="transition-colors hover:text-gold">Home</a>
+        <span>/</span>
+        <a
+          href={`/faction/${product.faction.toLowerCase().replace(/\s+/g, '-')}`}
+          className="transition-colors hover:text-gold"
+        >
           {product.faction}
         </a>
-        {' / '}
-        <span className="text-gray-900">{product.name}</span>
+        <span>/</span>
+        <span className="text-bone-muted">{product.name}</span>
       </nav>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {/* Product image */}
-        <div className="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
+        <div className="relative aspect-square overflow-hidden rounded-xl border border-ink-rim bg-ink-card">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
@@ -76,7 +79,7 @@ export default async function ProductPage({
               priority
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-300">
+            <div className="flex h-full items-center justify-center text-bone-faint">
               <svg className="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -86,28 +89,28 @@ export default async function ProductPage({
 
         {/* Product info */}
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-blue-600">
+          <p className="text-sm font-medium uppercase tracking-wide text-gold/80">
             {product.faction} · {product.gameSystem}
           </p>
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">{product.name}</h1>
+          <h1 className="mt-1 text-3xl font-bold text-bone">{product.name}</h1>
 
           <div className="mt-4 flex items-baseline gap-3">
             {cheapest ? (
               <>
-                <span className="text-4xl font-bold text-gray-900">
+                <span className="text-4xl font-bold text-bone">
                   ${cheapest.currentPrice.toFixed(2)}
                 </span>
-                <span className="text-lg text-gray-400 line-through">
+                <span className="text-lg text-bone-faint line-through">
                   ${Number(product.gwRrpUsd).toFixed(2)} RRP
                 </span>
                 {savings > 0 && (
-                  <span className="rounded bg-green-100 px-2 py-0.5 text-sm font-bold text-green-800">
+                  <span className="rounded bg-green-900/40 px-2 py-0.5 text-sm font-bold text-green-400">
                     Save ${savings.toFixed(2)}
                   </span>
                 )}
               </>
             ) : (
-              <span className="text-2xl font-bold text-gray-400">
+              <span className="text-2xl font-bold text-bone-muted">
                 GW RRP: ${Number(product.gwRrpUsd).toFixed(2)}
               </span>
             )}
@@ -117,7 +120,7 @@ export default async function ProductPage({
             <div className="mt-6">
               <a
                 href={`/go/${cheapest.storeSlug}/${cheapest.id}`}
-                className="block w-full rounded-lg bg-blue-600 px-6 py-3 text-center text-base font-semibold text-white hover:bg-blue-700"
+                className="block w-full rounded-lg bg-gold px-6 py-3 text-center text-base font-semibold text-ink transition-all hover:bg-gold-light hover:shadow-gold-glow"
                 rel="nofollow sponsored"
               >
                 Buy at {cheapest.storeName} →
@@ -125,7 +128,7 @@ export default async function ProductPage({
             </div>
           )}
 
-          <div className="mt-4 text-sm text-gray-500">
+          <div className="mt-4 text-sm text-bone-faint">
             <p>GW Item #: {product.gwItemNumber}</p>
             {cheapest && (
               <p className="mt-1">
@@ -138,7 +141,7 @@ export default async function ProductPage({
 
       {/* Price Comparison Table */}
       <div className="mt-10">
-        <h2 className="mb-4 text-xl font-bold text-gray-900">Compare Prices</h2>
+        <h2 className="mb-4 text-xl font-bold text-bone">Compare Prices</h2>
         <PriceComparisonTable
           listings={listings}
           gwRrpUsd={Number(product.gwRrpUsd)}
@@ -148,7 +151,7 @@ export default async function ProductPage({
 
       {/* Price History Chart */}
       <div className="mt-10">
-        <h2 className="mb-4 text-xl font-bold text-gray-900">Price History</h2>
+        <h2 className="mb-4 text-xl font-bold text-bone">Price History</h2>
         <PriceHistoryChart points={priceHistory} gwRrpUsd={Number(product.gwRrpUsd)} />
       </div>
     </div>

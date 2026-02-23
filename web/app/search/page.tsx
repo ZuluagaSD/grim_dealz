@@ -21,7 +21,7 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="mb-6 text-3xl font-bold text-gray-900">Search</h1>
+      <h1 className="mb-6 text-3xl font-bold text-bone">Search</h1>
 
       {/* Search form */}
       <form method="GET" className="mb-8">
@@ -31,12 +31,12 @@ export default async function SearchPage({
             type="search"
             defaultValue={query}
             placeholder="Search products, factions, game systems..."
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex-1 rounded-lg border border-ink-rim bg-ink-card px-4 py-2.5 text-base text-bone placeholder:text-bone-faint focus:border-gold/60 focus:outline-none focus:ring-1 focus:ring-gold/20"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-base font-semibold text-white hover:bg-blue-700"
+            className="rounded-lg bg-gold px-5 py-2.5 text-base font-semibold text-ink transition-all hover:bg-gold-light hover:shadow-gold-glow"
           >
             Search
           </button>
@@ -46,16 +46,16 @@ export default async function SearchPage({
       {/* Results */}
       {query && (
         <div>
-          <p className="mb-4 text-sm text-gray-600">
+          <p className="mb-4 text-sm text-bone-muted">
             {results.length === 0
-              ? `No results for &quot;${query}&quot;`
-              : `${results.length} results for &quot;${query}&quot;`}
+              ? `No results for "${query}"`
+              : `${results.length} results for "${query}"`}
           </p>
 
           {results.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 p-8 text-center text-gray-500">
-              <p className="text-lg font-medium">No results found</p>
-              <p className="mt-1 text-sm">
+            <div className="rounded-lg border border-ink-rim bg-ink-card p-8 text-center">
+              <p className="text-lg font-medium text-bone">No results found</p>
+              <p className="mt-1 text-sm text-bone-muted">
                 Try searching for a faction, product name, or game system.
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -64,7 +64,7 @@ export default async function SearchPage({
                     <Link
                       key={suggestion}
                       href={`/search?q=${encodeURIComponent(suggestion)}`}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
+                      className="rounded-full border border-ink-rim bg-ink-raised px-3 py-1 text-sm text-bone-muted transition-all hover:border-gold/30 hover:text-gold"
                     >
                       {suggestion}
                     </Link>
@@ -84,10 +84,10 @@ export default async function SearchPage({
 
       {/* Empty state — no query yet */}
       {!query && (
-        <div className="text-center text-gray-500">
+        <div className="text-center text-bone-muted">
           <p>Start typing to search 3,000+ Warhammer products.</p>
-          <p className="mt-4 text-sm font-medium text-gray-700">Popular searches:</p>
-          <div className="mt-2 flex flex-wrap justify-center gap-2">
+          <p className="mt-4 text-sm font-medium text-bone-faint">Popular searches:</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
             {[
               'Space Marines', 'Combat Patrol', 'Battleforce', 'Necrons',
               'Age of Sigmar', 'Codex', 'Paints', 'Horus Heresy',
@@ -95,7 +95,7 @@ export default async function SearchPage({
               <Link
                 key={s}
                 href={`/search?q=${encodeURIComponent(s)}`}
-                className="rounded-full bg-gray-100 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200"
+                className="rounded-full border border-ink-rim bg-ink-card px-3 py-1.5 text-sm text-bone-muted transition-all hover:border-gold/30 hover:bg-ink-raised hover:text-gold"
               >
                 {s}
               </Link>

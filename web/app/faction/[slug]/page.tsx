@@ -39,21 +39,21 @@ export default async function FactionPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Breadcrumb */}
-      <nav className="mb-4 text-sm text-gray-500">
-        <a href="/" className="hover:text-gray-700">Home</a>
-        {' / '}
-        <span className="text-gray-900">{factionName}</span>
+      <nav className="mb-4 text-sm text-bone-faint">
+        <a href="/" className="transition-colors hover:text-gold">Home</a>
+        <span className="mx-2 text-bone-faint">/</span>
+        <span className="text-bone-muted">{factionName}</span>
       </nav>
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">{factionName}</h1>
-        <p className="mt-1 text-gray-600">{products.length} products available</p>
+        <h1 className="text-3xl font-bold text-bone">{factionName}</h1>
+        <p className="mt-1 text-sm text-bone-muted">{products.length} products available</p>
       </div>
 
       {products.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 p-12 text-center text-gray-500">
-          <p className="text-lg font-medium">No products found</p>
-          <p className="mt-1 text-sm">
+        <div className="rounded-lg border border-ink-rim bg-ink-card p-12 text-center">
+          <p className="text-lg font-medium text-bone">No products found</p>
+          <p className="mt-1 text-sm text-bone-muted">
             This faction may not have any products listed yet.
           </p>
         </div>

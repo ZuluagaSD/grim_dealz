@@ -17,8 +17,8 @@ interface PriceHistoryChartProps {
   gwRrpUsd: number
 }
 
-// Curated palette — hero (cheapest / first) gets strong blue, rest are harmonious Tailwind 500s
-const STORE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4']
+// Gold leads — hero/cheapest store gets brand gold, rest harmonious on dark bg
+const STORE_COLORS = ['#c9a84c', '#10b981', '#8b5cf6', '#38bdf8', '#f87171', '#fb923c']
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -31,8 +31,8 @@ function formatPriceTick(value: number): string {
 export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChartProps) {
   if (points.length === 0) {
     return (
-      <div className="flex h-44 items-center justify-center rounded-xl border border-gray-100 bg-gray-50">
-        <p className="text-sm text-gray-400">
+      <div className="flex h-44 items-center justify-center rounded-xl border border-ink-rim bg-ink-card">
+        <p className="text-sm text-bone-faint">
           Price history will appear after a few scrape cycles.
         </p>
       </div>
@@ -82,9 +82,9 @@ export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChar
   const yMax = Math.ceil(gwRrpUsd * 1.05)
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-ink-rim bg-ink-card">
       {/* Header: store legend pills + window label */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink-rim px-5 py-3">
         {storeOrder.map((slug, i) => (
           <span
             key={slug}
@@ -101,26 +101,26 @@ export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChar
             {storeNames[slug]}
           </span>
         ))}
-        <span className="ml-auto text-xs font-medium text-gray-400">90 days</span>
+        <span className="ml-auto text-xs font-medium text-bone-faint">90 days</span>
       </div>
 
       {/* Chart */}
       <div className="px-2 pb-4 pt-5">
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={chartData} margin={{ top: 4, right: 20, bottom: 0, left: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
 
             <XAxis
               dataKey="date"
               tickFormatter={formatDate}
-              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tick={{ fontSize: 11, fill: '#5a5248' }}
               axisLine={false}
               tickLine={false}
               minTickGap={48}
             />
             <YAxis
               tickFormatter={formatPriceTick}
-              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tick={{ fontSize: 11, fill: '#5a5248' }}
               axisLine={false}
               tickLine={false}
               domain={[yMin, yMax]}
@@ -129,19 +129,19 @@ export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChar
 
             <Tooltip
               content={<CustomTooltip gwRrpUsd={gwRrpUsd} storeNames={storeNames} />}
-              cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+              cursor={{ stroke: '#2a2a2a', strokeWidth: 1 }}
             />
 
             {/* GW RRP reference line */}
             <ReferenceLine
               y={gwRrpUsd}
-              stroke="#d1d5db"
+              stroke="#5a5248"
               strokeDasharray="4 4"
               label={{
                 value: `RRP $${gwRrpUsd.toFixed(0)}`,
                 position: 'insideTopLeft',
                 fontSize: 10,
-                fill: '#9ca3af',
+                fill: '#5a5248',
                 fontWeight: 500,
               }}
             />
@@ -157,7 +157,7 @@ export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChar
                 activeDot={{
                   r: 5,
                   strokeWidth: 2,
-                  stroke: '#fff',
+                  stroke: '#141414',
                   fill: STORE_COLORS[i % STORE_COLORS.length],
                 }}
                 connectNulls={false}
@@ -183,14 +183,14 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label, gwRrpUsd, storeNames }: CustomTooltipProps) {
   if (!active || !payload?.length || !label) return null
 
-  // Sort cheapest first so the best deal is always on top
+  // Sort cheapest first
   const sorted = [...payload].sort((a, b) => a.value - b.value)
   const bestPrice = sorted[0]?.value
 
   return (
-    <div className="w-52 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
-      <div className="border-b border-gray-50 px-3 py-2">
-        <p className="text-xs font-semibold text-gray-500">
+    <div className="w-52 overflow-hidden rounded-xl border border-ink-rim bg-ink-raised shadow-xl shadow-black/60">
+      <div className="border-b border-ink-rim px-3 py-2">
+        <p className="text-xs font-semibold text-bone-muted">
           {new Date(label).toLocaleDateString('en-US', {
             month: 'long',
             day: 'numeric',
@@ -198,7 +198,7 @@ function CustomTooltip({ active, payload, label, gwRrpUsd, storeNames }: CustomT
           })}
         </p>
       </div>
-      <div className="divide-y divide-gray-50 px-3 py-1">
+      <div className="divide-y divide-ink-rim px-3 py-1">
         {sorted.map((entry) => {
           const savings = gwRrpUsd - entry.value
           const discountPct = (savings / gwRrpUsd) * 100
@@ -209,16 +209,16 @@ function CustomTooltip({ active, payload, label, gwRrpUsd, storeNames }: CustomT
                 className="h-5 w-0.5 flex-shrink-0 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="min-w-0 flex-1 truncate text-xs text-gray-600">
+              <span className="min-w-0 flex-1 truncate text-xs text-bone-muted">
                 {storeNames[entry.dataKey] ?? entry.dataKey}
               </span>
-              <span className="text-xs font-bold text-gray-900">${entry.value.toFixed(2)}</span>
+              <span className="text-xs font-bold text-bone">${entry.value.toFixed(2)}</span>
               {savings > 0 && (
                 <span
                   className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold"
                   style={{
-                    backgroundColor: isBest ? '#dcfce7' : '#f0fdf4',
-                    color: isBest ? '#15803d' : '#16a34a',
+                    backgroundColor: isBest ? 'rgba(74,222,128,0.2)' : 'rgba(74,222,128,0.1)',
+                    color: isBest ? '#4ade80' : '#86efac',
                   }}
                 >
                   -{Math.round(discountPct)}%
