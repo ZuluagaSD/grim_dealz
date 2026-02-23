@@ -14,11 +14,11 @@ import type {
 
 export { ProductType }
 
-// Stable map of game system slugs → display names
+// Stable map of game system slugs → display names (must match DB exactly)
 export const GAME_SYSTEM_MAP: Record<string, string> = {
-  'warhammer-40k': 'Warhammer 40K',
+  'warhammer-40k': 'Warhammer 40,000',
   'age-of-sigmar': 'Age of Sigmar',
-  'horus-heresy': 'Horus Heresy',
+  'horus-heresy': 'The Horus Heresy',
   'the-old-world': 'The Old World',
 }
 

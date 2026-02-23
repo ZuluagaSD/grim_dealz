@@ -57,7 +57,7 @@ export default function RootLayout({
                 <a href="/deals" className="text-sm font-medium text-bone-muted transition-colors hover:text-gold">
                   Deals
                 </a>
-                <a href="/faction/space-marines" className="text-sm font-medium text-bone-muted transition-colors hover:text-gold">
+                <a href="/factions" className="text-sm font-medium text-bone-muted transition-colors hover:text-gold">
                   Factions
                 </a>
                 <a href="/battleforce-tracker" className="text-sm font-medium text-bone-muted transition-colors hover:text-gold">

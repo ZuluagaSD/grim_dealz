@@ -16,9 +16,9 @@ export const metadata: Metadata = {
 
 // Display order for game systems
 const GAME_SYSTEM_ORDER = [
-  'Warhammer 40K',
+  'Warhammer 40,000',
   'Age of Sigmar',
-  'Horus Heresy',
+  'The Horus Heresy',
   'The Old World',
 ]
 
