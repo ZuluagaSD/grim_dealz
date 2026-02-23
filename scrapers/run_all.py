@@ -45,7 +45,7 @@ SCRAPERS: list[type[BaseStore]] = [
     # Phase 3: add NoblekKnightScraper, AtomicEmpireScraper, etc.
 ]
 
-SITE_URL = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://grimdealz.com")
+SITE_URL = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://www.grimdealz.com")
 REVALIDATE_SECRET = os.environ.get("REVALIDATE_SECRET", "")
 
 

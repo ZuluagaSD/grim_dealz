@@ -162,10 +162,14 @@ def _bow_match(
     """Bag-of-words match with subset fallback.
 
     1. Exact key match (same word set)
-    2. Subset match: DB key ⊆ retailer key (retailer adds ≤3 extra words)
-       e.g. DB "Space Marines Intercessors" ← MM "Primaris Space Marines Intercessors"
+    2. Subset match: DB key ⊆ retailer key (retailer adds ≤5 extra words)
+       Handles DGI's "Game - Faction - Product" format where faction words
+       appear in the retailer BOW but not in the short DB product name:
+         DB "Blood Claws" {blood, claws} ← DGI "Space Wolves - Blood Claws"
+         DB "Baneblade" {baneblade}      ← DGI "Astra Militarum - Baneblade"
 
-    Requires DB BOW to have ≥3 words to avoid false-positive subset matches.
+    Min DB key size is 1 — GW uses unique fantasy names (Baneblade, Lictor)
+    that won't generate false positives even as single-word matches.
     """
     # 1. Exact match
     hit = index.get(key)
@@ -173,10 +177,18 @@ def _bow_match(
         return hit
 
     # 2. Subset: find a DB key that is fully contained in the retailer key
-    if len(key) >= 3:
+    # with at most 5 extra words from the retailer (faction prefix, etc.)
+    if len(key) >= 2:
+        best: tuple[str, str] | None = None
+        best_extra = 6  # lower = better (closer match)
         for db_key, value in index.items():
-            if len(db_key) >= 3 and db_key <= key and len(key) - len(db_key) <= 3:
-                return value
+            if len(db_key) >= 1 and db_key <= key:
+                extra = len(key) - len(db_key)
+                if extra <= 5 and extra < best_extra:
+                    best = value
+                    best_extra = extra
+        if best:
+            return best
 
     return None
 
@@ -352,9 +364,10 @@ async def run_mm_pass(
         hit = _bow_match(key, index)
         if hit:
             product_id, db_name = hit
-            await update_catalog_code(conn, product_id, item_number)
-            # Remove from index so we don't double-assign
+            # Pop BEFORE await — prevents two coroutines both seeing the same key
+            # and racing to write the same gw_catalog_code (UniqueViolation)
             index.pop(key, None)
+            await update_catalog_code(conn, product_id, item_number)
             matched += 1
             logger.debug("[MM] ✓ %s  retailer=%r  db=%r", item_number, name, db_name)
         else:
@@ -460,8 +473,10 @@ async def run_dgi_pass(
         hit = _bow_match(key, index)
         if hit:
             product_id, db_name = hit
-            await update_catalog_code(conn, product_id, item_number)
+            # Pop BEFORE await — prevents two coroutines both seeing the same key
+            # and racing to write the same gw_catalog_code (UniqueViolation)
             index.pop(key, None)
+            await update_catalog_code(conn, product_id, item_number)
             matched += 1
             logger.debug("[DGI] ✓ %s  retailer=%r  db=%r", item_number, name, db_name)
         else:
