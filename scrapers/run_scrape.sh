@@ -21,7 +21,7 @@ echo "=== GrimDealz scrape run starting at $(date) ===" | tee "$LOGFILE"
 
 # Pull latest code
 cd "$REPO"
-git pull --ff-only origin main >> "$LOGFILE" 2>&1 || echo "git pull failed (continuing)" >> "$LOGFILE"
+git pull --ff-only origin master >> "$LOGFILE" 2>&1 || echo "git pull failed (continuing)" >> "$LOGFILE"
 
 # Sync Python deps
 cd "$REPO/scrapers"
