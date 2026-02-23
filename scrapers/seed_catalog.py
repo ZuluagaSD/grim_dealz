@@ -356,28 +356,32 @@ def _make_slug(name: str, gw_item_number: str) -> str:
 
 
 async def upsert_product(conn: psycopg.AsyncConnection, p: RawProduct) -> bool:
-    """Insert product, skip if gw_item_number already exists. Returns True if inserted."""
+    """Insert product, skip if gw_item_number already exists. Returns True if inserted.
+
+    ON CONFLICT updates gw_url so re-running this script backfills the URL for
+    existing products that were seeded before the gw_url column existed.
+    """
     result = await conn.execute(
         """
         INSERT INTO products (
             id, slug, name, gw_item_number,
             faction, game_system, category, product_type,
-            gw_rrp_usd, image_url,
+            gw_rrp_usd, image_url, gw_url,
             is_active, created_at, updated_at
         )
         VALUES (
             gen_random_uuid(), %s, %s, %s,
             %s, %s, %s, %s::"ProductType",
-            %s, %s,
+            %s, %s, %s,
             TRUE, NOW(), NOW()
         )
-        ON CONFLICT (gw_item_number) DO NOTHING
+        ON CONFLICT (gw_item_number) DO UPDATE SET gw_url = EXCLUDED.gw_url
         RETURNING id
         """,
         (
             p.slug, p.name, p.gw_item_number,
             p.faction, p.game_system, p.category, p.product_type,
-            p.gw_rrp_usd, p.image_url,
+            p.gw_rrp_usd, p.image_url, p.url,
         ),
     )
     return await result.fetchone() is not None

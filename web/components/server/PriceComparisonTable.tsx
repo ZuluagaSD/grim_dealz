@@ -4,11 +4,13 @@ import type { SerializedListing } from '@/lib/types'
 interface PriceComparisonTableProps {
   listings: SerializedListing[]
   gwRrpUsd: number
+  gwUrl?: string | null
 }
 
 export default function PriceComparisonTable({
   listings,
   gwRrpUsd,
+  gwUrl,
 }: PriceComparisonTableProps) {
   if (listings.length === 0) {
     return (
@@ -51,7 +53,18 @@ export default function PriceComparisonTable({
             </td>
             <td className="px-4 py-3 text-right text-sm text-gray-400">—</td>
             <td className="px-4 py-3 text-center text-sm text-gray-400">—</td>
-            <td className="px-4 py-3" />
+            <td className="px-4 py-3 text-right">
+              {gwUrl && (
+                <a
+                  href={gwUrl}
+                  className="inline-flex items-center rounded bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700"
+                  rel="nofollow"
+                  target="_blank"
+                >
+                  Buy →
+                </a>
+              )}
+            </td>
           </tr>
 
           {listings.map((listing, idx) => (

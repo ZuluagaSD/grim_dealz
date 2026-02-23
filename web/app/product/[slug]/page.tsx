@@ -140,6 +140,7 @@ export default async function ProductPage({
         <PriceComparisonTable
           listings={listings}
           gwRrpUsd={Number(product.gwRrpUsd)}
+          gwUrl={product.gwUrl}
         />
       </div>
     </div>
