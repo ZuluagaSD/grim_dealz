@@ -7,6 +7,7 @@ import type {
   ProductCardData,
   DealItem,
   SerializedListing,
+  SerializedPricePoint,
 } from './types'
 
 // ─────────────────────────────────────────
@@ -288,6 +289,39 @@ export const searchProducts = async (
     cheapestListing: null, // search results don't load listings for performance
   }))
 }
+
+export const getPriceHistory = cache(
+  unstable_cache(
+    async (slug: string): Promise<SerializedPricePoint[]> => {
+      type Row = {
+        scraped_at: Date | string
+        price: string
+        store_name: string
+        store_slug: string
+      }
+      const rows = await prisma.$queryRaw<Row[]>`
+        SELECT ph.scraped_at, ph.price::text, s.name AS store_name, s.slug AS store_slug
+        FROM   price_history ph
+        JOIN   listings l ON l.id = ph.listing_id
+        JOIN   stores   s ON s.id = l.store_id
+        JOIN   products p ON p.id = l.product_id
+        WHERE  p.slug = ${slug}
+          AND  p.is_active = TRUE
+          AND  s.is_active = TRUE
+          AND  ph.scraped_at >= NOW() - INTERVAL '90 days'
+        ORDER  BY ph.scraped_at ASC
+      `
+      return rows.map((r) => ({
+        date: toIso(r.scraped_at as Date),
+        price: parseFloat(r.price),
+        storeSlug: r.store_slug,
+        storeName: r.store_name,
+      }))
+    },
+    ['price-history'],
+    { revalidate: 14400, tags: ['listings'] }
+  )
+)
 
 export const generateProductStaticParams = cache(
   unstable_cache(

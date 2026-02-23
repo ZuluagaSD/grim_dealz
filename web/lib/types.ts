@@ -60,6 +60,14 @@ export type DealItem = ProductCardData & {
   productType: string
 }
 
+// One price_history row serialized for the chart component
+export type SerializedPricePoint = {
+  date: string    // ISO string — scraped_at timestamp
+  price: number
+  storeSlug: string
+  storeName: string
+}
+
 // For faction page — faction summary
 export type FactionSummary = {
   faction: string

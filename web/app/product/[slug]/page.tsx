@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import type { Metadata } from 'next'
 import PriceComparisonTable from '@/components/server/PriceComparisonTable'
-import { getProduct, getProductListings, generateProductStaticParams } from '@/lib/data'
+import PriceHistoryChart from '@/components/client/PriceHistoryChart'
+import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams } from '@/lib/data'
 
 export const revalidate = 14400
 export const dynamicParams = true
@@ -34,9 +35,10 @@ export default async function ProductPage({
 }: {
   params: { slug: string }
 }) {
-  const [product, listings] = await Promise.all([
+  const [product, listings, priceHistory] = await Promise.all([
     getProduct(params.slug),
     getProductListings(params.slug),
+    getPriceHistory(params.slug),
   ])
 
   if (!product) {
@@ -142,6 +144,12 @@ export default async function ProductPage({
           gwRrpUsd={Number(product.gwRrpUsd)}
           gwUrl={product.gwUrl}
         />
+      </div>
+
+      {/* Price History Chart */}
+      <div className="mt-10">
+        <h2 className="mb-4 text-xl font-bold text-gray-900">Price History</h2>
+        <PriceHistoryChart points={priceHistory} gwRrpUsd={Number(product.gwRrpUsd)} />
       </div>
     </div>
   )
