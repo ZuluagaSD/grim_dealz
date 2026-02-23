@@ -61,6 +61,19 @@ export default function PriceHistoryChart({ points, gwRrpUsd }: PriceHistoryChar
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([day, prices]) => ({ date: day, ...prices }))
 
+  // Extend each store's last known price to today with a flat line
+  const today = new Date().toISOString().slice(0, 10)
+  if (chartData.length > 0 && chartData[chartData.length - 1]?.date !== today) {
+    const lastPrices: Record<string, number> = {}
+    for (const row of chartData) {
+      for (const slug of storeOrder) {
+        const price = (row as Record<string, unknown>)[slug]
+        if (typeof price === 'number') lastPrices[slug] = price
+      }
+    }
+    chartData.push({ date: today, ...lastPrices })
+  }
+
   // Y-axis domain: 10% below cheapest, 5% above RRP
   const allPrices = points.map((p) => p.price)
   const minPrice = Math.min(...allPrices)
