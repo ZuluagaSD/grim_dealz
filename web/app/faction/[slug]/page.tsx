@@ -1,9 +1,17 @@
 // Faction page — ISR 6h
 import type { Metadata } from 'next'
 import ProductCard from '@/components/server/ProductCard'
-import { getFactionProducts } from '@/lib/data'
+import { getFactionProducts, getFactions } from '@/lib/data'
 
 export const revalidate = 21600
+export const dynamicParams = true
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+
+export async function generateStaticParams() {
+  const factions = await getFactions()
+  return factions.map((f) => ({ slug: f.slug }))
+}
 
 export async function generateMetadata({
   params,
@@ -16,7 +24,7 @@ export async function generateMetadata({
     .join(' ')
 
   return {
-    title: `${factionName} Prices`,
+    title: `${factionName} Warhammer Prices — Compare Retailers`,
     description: `Compare ${factionName} Warhammer prices across 10+ authorized US retailers. Find the best deals and save up to 25% off GW RRP.`,
     alternates: {
       canonical: `/faction/${params.slug}`,
@@ -36,8 +44,19 @@ export default async function FactionPage({
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: factionName, item: `${SITE_URL}/faction/${params.slug}` },
+    ],
+  }
+  const schemaJson = JSON.stringify(breadcrumbSchema).replace(/</g, '\\u003c')
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schemaJson }} />
       {/* Breadcrumb */}
       <nav className="mb-4 text-sm text-bone-faint">
         <a href="/" className="transition-colors hover:text-gold">Home</a>

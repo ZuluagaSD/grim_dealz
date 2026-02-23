@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Search',
   description: 'Search Warhammer products across all game systems and factions.',
+  robots: { index: false, follow: true },
 }
 
 export default async function SearchPage({

@@ -1,9 +1,31 @@
 // Homepage — ISR 1h
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import ProductCard from '@/components/server/ProductCard'
 import { getHomepageData } from '@/lib/data'
 
 export const revalidate = 3600
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+}
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'GrimDealz',
+  url: SITE_URL,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
+}
 
 const FEATURED_FACTIONS = [
   { name: 'Space Marines', slug: 'space-marines', color: '#4a7fd4' },
@@ -14,9 +36,11 @@ const FEATURED_FACTIONS = [
 
 export default async function HomePage() {
   const { topDeals, dailyDrops } = await getHomepageData()
+  const schemaJson = JSON.stringify(websiteSchema).replace(/</g, '\\u003c')
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schemaJson }} />
       {/* Hero */}
       <section className="relative overflow-hidden py-16 text-center sm:py-20">
         {/* Atmospheric glow — no external images */}
@@ -111,7 +135,12 @@ export default async function HomePage() {
 
       {/* Featured Factions */}
       <section className="mt-8 pb-8">
-        <h2 className="mb-4 text-xl font-bold text-bone">Browse by Faction</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-bone">Browse by Faction</h2>
+          <Link href="/factions" className="text-sm text-gold/70 transition-colors hover:text-gold">
+            Browse All Factions →
+          </Link>
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {FEATURED_FACTIONS.map((f) => (
             <Link

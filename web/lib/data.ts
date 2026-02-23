@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
+import { ProductType } from '@prisma/client'
 import { prisma } from './prisma'
 import type {
   ProductWithListings,
@@ -8,7 +9,18 @@ import type {
   DealItem,
   SerializedListing,
   SerializedPricePoint,
+  FactionSummary,
 } from './types'
+
+export { ProductType }
+
+// Stable map of game system slugs → display names
+export const GAME_SYSTEM_MAP: Record<string, string> = {
+  'warhammer-40k': 'Warhammer 40K',
+  'age-of-sigmar': 'Age of Sigmar',
+  'horus-heresy': 'Horus Heresy',
+  'the-old-world': 'The Old World',
+}
 
 // ─────────────────────────────────────────
 // Serialization helpers
@@ -336,5 +348,84 @@ export const generateProductStaticParams = cache(
     },
     ['product-static-params'],
     { revalidate: 86400, tags: ['products'] }
+  )
+)
+
+// All distinct factions with product counts — for /factions hub + generateStaticParams
+export const getFactions = cache(
+  unstable_cache(
+    async (): Promise<FactionSummary[]> => {
+      const groups = await prisma.product.groupBy({
+        by: ['faction', 'gameSystem'],
+        where: { isActive: true },
+        _count: { _all: true },
+      })
+      return groups
+        .map((g) => ({
+          faction: g.faction,
+          gameSystem: g.gameSystem,
+          slug: g.faction.toLowerCase().replace(/\s+/g, '-'),
+          productCount: g._count._all,
+          cheapestDiscount: 0,
+        }))
+        .sort((a, b) => a.faction.localeCompare(b.faction))
+    },
+    ['factions'],
+    { revalidate: 86400, tags: ['products'] }
+  )
+)
+
+// Products filtered by type — for /battleforce-tracker (battleforce + combat_patrol sections)
+export const getProductsByType = cache(
+  unstable_cache(
+    async (productType: ProductType): Promise<ProductCardData[]> => {
+      const products = await prisma.product.findMany({
+        where: { isActive: true, productType },
+        include: {
+          listings: {
+            where: { store: { isActive: true } },
+            include: { store: true },
+            orderBy: { currentPrice: 'asc' },
+            take: 1,
+          },
+        },
+        orderBy: { name: 'asc' },
+      })
+      return products
+        .map((p) => productToCardData(p))
+        .sort((a, b) => {
+          const aDisc = a.cheapestListing?.discountPct ?? 0
+          const bDisc = b.cheapestListing?.discountPct ?? 0
+          if (bDisc !== aDisc) return bDisc - aDisc
+          return (b.cheapestListing?.inStock ? 1 : 0) - (a.cheapestListing?.inStock ? 1 : 0)
+        })
+    },
+    ['products-by-type'],
+    { revalidate: 3600, tags: ['products', 'deals'] }
+  )
+)
+
+// All products for a game system — for /game/[slug] pages
+export const getGameSystemProducts = cache(
+  unstable_cache(
+    async (gameSystemSlug: string): Promise<ProductCardData[]> => {
+      const gameSystem = GAME_SYSTEM_MAP[gameSystemSlug]
+      if (!gameSystem) return []
+      const products = await prisma.product.findMany({
+        where: { isActive: true, gameSystem },
+        include: {
+          listings: {
+            where: { store: { isActive: true } },
+            include: { store: true },
+            orderBy: { currentPrice: 'asc' },
+            take: 1,
+          },
+        },
+        orderBy: { name: 'asc' },
+      })
+      return products.map((p) => productToCardData(p))
+    },
+    ['game-system-products'],
+    { revalidate: 21600, tags: ['products'] }
   )
 )

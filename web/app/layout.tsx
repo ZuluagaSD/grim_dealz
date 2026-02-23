@@ -20,6 +20,21 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
   ),
+  openGraph: {
+    type: 'website',
+    siteName: 'GrimDealz',
+    title: 'GrimDealz — Best Warhammer Prices Compared',
+    description:
+      'Compare Warhammer 40K, Age of Sigmar, and Horus Heresy prices across 10+ authorized US retailers. Save up to 25% off GW RRP.',
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: 'GrimDealz' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'GrimDealz — Best Warhammer Prices Compared',
+    description:
+      'Compare Warhammer 40K, Age of Sigmar, and Horus Heresy prices across 10+ authorized US retailers.',
+    images: ['/og-default.png'],
+  },
 }
 
 export default function RootLayout({
@@ -70,7 +85,8 @@ export default function RootLayout({
               </a>
               <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-bone-muted">
                 <a href="/deals" className="transition-colors hover:text-gold">Deals</a>
-                <a href="/faction/space-marines" className="transition-colors hover:text-gold">Factions</a>
+                <a href="/factions" className="transition-colors hover:text-gold">Factions</a>
+                <a href="/battleforce-tracker" className="transition-colors hover:text-gold">Battleforce Tracker</a>
                 <a href="/search" className="transition-colors hover:text-gold">Search</a>
                 <a href="/privacy" className="transition-colors hover:text-gold">Privacy</a>
               </nav>

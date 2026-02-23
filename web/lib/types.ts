@@ -19,6 +19,7 @@ export type GetDealsOptions = {
   faction?: string | undefined
   gameSystem?: string | undefined
   window?: '24h' | '7d' | undefined
+  productType?: string | undefined
 }
 
 // Serialized form safe for components — Decimal converted to number, no Prisma types
@@ -75,4 +76,11 @@ export type FactionSummary = {
   slug: string // faction slug for /faction/[slug] route
   productCount: number
   cheapestDiscount: number // highest discount_pct available
+}
+
+// For game system hub pages (/game/[slug])
+export type GameSystemSummary = {
+  gameSystem: string
+  slug: string // e.g. "warhammer-40k"
+  productCount: number
 }

@@ -20,6 +20,7 @@ export async function generateMetadata({
   return {
     title: window ? `${window} Price Drops` : 'Best Deals',
     description: 'Find the best discounts on Warhammer miniatures, paints, and books across 10+ authorized US retailers.',
+    alternates: { canonical: '/deals' },
   }
 }
 

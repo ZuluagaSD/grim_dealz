@@ -5,6 +5,60 @@ import type { Metadata } from 'next'
 import PriceComparisonTable from '@/components/server/PriceComparisonTable'
 import PriceHistoryChart from '@/components/client/PriceHistoryChart'
 import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams } from '@/lib/data'
+import type { ProductWithListings, SerializedListing } from '@/lib/types'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+
+function buildProductSchema(
+  product: ProductWithListings,
+  listings: SerializedListing[]
+) {
+  const prices = listings.map((l) => l.currentPrice)
+  const lowPrice = prices.length > 0 ? Math.min(...prices) : Number(product.gwRrpUsd)
+  const highPrice = prices.length > 0 ? Math.max(...prices) : Number(product.gwRrpUsd)
+  const factionSlug = product.faction.toLowerCase().replace(/\s+/g, '-')
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: product.faction, item: `${SITE_URL}/faction/${factionSlug}` },
+          { '@type': 'ListItem', position: 3, name: product.name, item: `${SITE_URL}/product/${product.slug}` },
+        ],
+      },
+      {
+        '@type': 'Product',
+        name: product.name,
+        ...(product.imageUrl ? { image: product.imageUrl } : {}),
+        offers: {
+          '@type': 'AggregateOffer',
+          lowPrice: lowPrice.toFixed(2),
+          highPrice: highPrice.toFixed(2),
+          offerCount: listings.length,
+          priceCurrency: 'USD',
+          offers: listings.map((l) => ({
+            '@type': 'Offer',
+            price: l.currentPrice.toFixed(2),
+            priceCurrency: 'USD',
+            availability: l.inStock
+              ? 'https://schema.org/InStock'
+              : 'https://schema.org/OutOfStock',
+            priceValidUntil: new Date(
+              new Date(l.lastCheckedAt).getTime() + 24 * 60 * 60 * 1000
+            )
+              .toISOString()
+              .split('T')[0],
+            url: `${SITE_URL}/go/${l.storeSlug}/${l.id}`,
+            seller: { '@type': 'Organization', name: l.storeName },
+          })),
+        },
+      },
+    ],
+  }
+}
 
 export const revalidate = 14400
 export const dynamicParams = true
@@ -21,9 +75,14 @@ export async function generateMetadata({
   const product = await getProduct(params.slug)
   if (!product) return {}
 
+  const cheapest = product.listings[0]
+  const desc = cheapest
+    ? `Buy ${product.name} from $${Number(cheapest.currentPrice).toFixed(2)} — ${Math.round(Number(cheapest.discountPct))}% off GW RRP. Compare 10+ authorized US retailers.`
+    : `Compare prices for ${product.name} across 10+ authorized US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`
+
   return {
-    title: product.name,
-    description: `Compare prices for ${product.name} across 10+ authorized US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`,
+    title: `${product.name} — Best Price`,
+    description: desc,
     alternates: {
       canonical: `/product/${product.slug}`,
     },
@@ -50,8 +109,12 @@ export default async function ProductPage({
     ? Number(product.gwRrpUsd) - cheapest.currentPrice
     : 0
 
+  const schema = buildProductSchema(product, listings)
+  const schemaJson = JSON.stringify(schema).replace(/</g, '\\u003c')
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schemaJson }} />
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1.5 text-sm text-bone-faint">
         <a href="/" className="transition-colors hover:text-gold">Home</a>
