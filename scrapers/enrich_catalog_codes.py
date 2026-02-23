@@ -10,16 +10,23 @@ Why this is needed:
   gw_item_number. Both MM and DGI expose the short retail catalog code (XX-XX).
   This script populates gw_catalog_code so db.py can match scraped results.
 
+Matching strategy:
+  Exact SQL matching fails because names differ between MM/DGI and Algolia:
+    MM:     "Space Marines Combat Patrol"
+    Algolia: "Combat Patrol: Space Marines"
+  Solution: bag-of-words matching in Python — loads all DB products into memory,
+  strips stop words + punctuation, then matches on word sets regardless of order.
+
 Strategy:
   Pass 1 — Miniature Market (914 GW products):
     - Parse MM sitemap → gw-XX-XX.html URLs (item code in URL itself)
     - Fetch each page → extract og:title (product name)
-    - Exact case-insensitive name match → UPDATE gw_catalog_code
+    - Bag-of-words match → UPDATE gw_catalog_code
 
   Pass 2 — Discount Games Inc (fills gaps not covered by MM):
     - Paginate all 13 GW category pages → collect product URLs
     - Fetch each page → extract MPN (GAWXX-XX → XX-XX) + og:title name
-    - Match by name → UPDATE gw_catalog_code (skip if already set by Pass 1)
+    - Bag-of-words match → UPDATE gw_catalog_code (skip if already set by Pass 1)
 
 Usage:
   uv run python -m scrapers.enrich_catalog_codes          # both passes
@@ -92,17 +99,64 @@ _DGI_CONCURRENCY = 4
 _DGI_CAT_CONCURRENCY = 3
 _DGI_SLEEP = 0.5
 
+# Words to ignore in bag-of-words matching
+_STOP_WORDS = frozenset(
+    "the a an of and or in on for to at by with from".split()
+)
+
+# Manufacturer / store name prefixes to strip before matching
+_STRIP_PREFIXES_RE = re.compile(
+    r"^(games\s+workshop|gw|citadel\s+colour|citadel|"
+    r"warhammer\s+40[,.]?000|warhammer\s+40k|"
+    r"age\s+of\s+sigmar|the\s+horus\s+heresy|"
+    r"the\s+old\s+world|middle[-\s]earth|"
+    r"warcry|necromunda|blood\s+bowl|underworlds|"
+    r"kill\s+team|warhammer\s+quest)[:\s\-]+",
+    re.IGNORECASE,
+)
+
 
 # ─────────────────────────────────────────
-# Helpers
+# Bag-of-words matching
+# ─────────────────────────────────────────
+
+
+def _make_bow_key(name: str) -> frozenset[str]:
+    """Normalize a product name to a bag-of-words key for fuzzy matching.
+
+    Handles common differences between Algolia and retailer names:
+      "Combat Patrol: Space Marines"  → {combat, patrol, space, marines}
+      "Space Marines Combat Patrol"   → {combat, patrol, space, marines}  ← same ✓
+      "Games Workshop Space Marines Combat Patrol" → strips "games workshop" ← same ✓
+    """
+    # Strip store suffix
+    name = name.split(" | ")[0].strip()
+    # Strip manufacturer/game-system prefixes (iteratively — some names have multiple)
+    for _ in range(3):
+        stripped = _STRIP_PREFIXES_RE.sub("", name, count=1).strip()
+        if stripped == name:
+            break
+        name = stripped
+    # Keep only alphanumeric, split into words
+    words = re.sub(r"[^a-z0-9]", " ", name.lower()).split()
+    return frozenset(w for w in words if len(w) > 1 and w not in _STOP_WORDS)
+
+
+def _bow_match(
+    key: frozenset[str],
+    index: dict[frozenset[str], tuple[str, str]],
+) -> tuple[str, str] | None:
+    """Exact bag-of-words match. Returns (product_id, db_name) or None."""
+    return index.get(key)
+
+
+# ─────────────────────────────────────────
+# HTML helpers
 # ─────────────────────────────────────────
 
 
 def _extract_page_name(html: str) -> str | None:
-    """Extract product name from og:title or h1.
-
-    Strips " | Store Name" suffixes that some sites append to og:title.
-    """
+    """Extract product name from og:title or h1."""
     soup = BeautifulSoup(html, "html.parser")
     og = soup.find("meta", property="og:title")
     if og:
@@ -142,7 +196,7 @@ def _dgi_extract_mpn(html: str) -> str | None:
 async def ensure_column(conn: psycopg.AsyncConnection) -> None:
     """Add gw_catalog_code column + index if they don't exist yet."""
     await conn.execute(
-        'ALTER TABLE products ADD COLUMN IF NOT EXISTS gw_catalog_code TEXT'
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS gw_catalog_code TEXT"
     )
     await conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS products_gw_catalog_code_key "
@@ -152,20 +206,36 @@ async def ensure_column(conn: psycopg.AsyncConnection) -> None:
     logger.info("gw_catalog_code column ready")
 
 
-async def match_product(
-    conn: psycopg.AsyncConnection, name: str
-) -> str | None:
-    """Return product.id where name matches (case-insensitive) and
-    gw_catalog_code is not yet set. Returns None if no match."""
-    row = await (
+async def load_products_index(
+    conn: psycopg.AsyncConnection,
+) -> dict[frozenset[str], tuple[str, str]]:
+    """Load all unmatched DB products into a bag-of-words in-memory index.
+
+    Returns: {bow_key → (product_id, name)}
+    Duplicate BOW keys (distinct names with same words) keep the first row.
+    """
+    rows = await (
         await conn.execute(
-            "SELECT id FROM products "
-            "WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) "
-            "AND gw_catalog_code IS NULL",
-            (name,),
+            "SELECT id, name FROM products "
+            "WHERE gw_catalog_code IS NULL AND is_active = TRUE"
         )
-    ).fetchone()
-    return row[0] if row else None
+    ).fetchall()
+    index: dict[frozenset[str], tuple[str, str]] = {}
+    collisions = 0
+    for product_id, name in rows:
+        key = _make_bow_key(name)
+        if not key:
+            continue
+        if key in index:
+            collisions += 1
+        else:
+            index[key] = (product_id, name)
+    logger.info(
+        "Loaded %d products into BOW index (%d key collisions ignored)",
+        len(index),
+        collisions,
+    )
+    return index
 
 
 async def update_catalog_code(
@@ -189,6 +259,7 @@ async def update_catalog_code(
 async def run_mm_pass(
     client: httpx.AsyncClient,
     conn: psycopg.AsyncConnection,
+    index: dict[frozenset[str], tuple[str, str]],
 ) -> tuple[int, int]:
     """Fetch MM sitemap, iterate product pages, populate gw_catalog_code.
 
@@ -220,11 +291,11 @@ async def run_mm_pass(
     ]
     logger.info("[MM] %d GW product URLs in sitemap", len(product_urls))
 
-    # 3. Fetch pages concurrently
+    # 3. Fetch pages concurrently, match by BOW
     sem = asyncio.Semaphore(_MM_CONCURRENCY)
     matched = 0
     attempted = 0
-    unmatched_names: list[str] = []
+    sample_unmatched: list[str] = []  # log a sample for debugging
 
     async def process_url(url: str) -> None:
         nonlocal matched, attempted
@@ -246,24 +317,29 @@ async def run_mm_pass(
             return
 
         attempted += 1
-        product_id = await match_product(conn, name)
-        if product_id:
+        key = _make_bow_key(name)
+        hit = _bow_match(key, index)
+        if hit:
+            product_id, db_name = hit
             await update_catalog_code(conn, product_id, item_number)
+            # Remove from index so we don't double-assign
+            index.pop(key, None)
             matched += 1
-            logger.debug("[MM] ✓ %s → %s", item_number, name)
+            logger.debug("[MM] ✓ %s  retailer=%r  db=%r", item_number, name, db_name)
         else:
-            unmatched_names.append(f"{item_number}: {name!r}")
+            if len(sample_unmatched) < 30:
+                sample_unmatched.append(f"{item_number}: {name!r}  bow={sorted(key)}")
 
     await asyncio.gather(*[process_url(u) for u in product_urls])
 
     logger.info(
         "[MM] Pass complete: %d/%d matched (gw_catalog_code set)", matched, attempted
     )
-    if unmatched_names:
+    if sample_unmatched:
         logger.warning(
-            "[MM] %d products not matched in DB:\n  %s",
-            len(unmatched_names),
-            "\n  ".join(unmatched_names[:20]),
+            "[MM] Sample unmatched (first %d):\n  %s",
+            len(sample_unmatched),
+            "\n  ".join(sample_unmatched),
         )
     return matched, attempted
 
@@ -311,6 +387,7 @@ async def _dgi_paginate_category(
 async def run_dgi_pass(
     client: httpx.AsyncClient,
     conn: psycopg.AsyncConnection,
+    index: dict[frozenset[str], tuple[str, str]],
 ) -> tuple[int, int]:
     """Paginate DGI categories, fetch product pages, populate gw_catalog_code.
 
@@ -327,7 +404,7 @@ async def run_dgi_pass(
     sem = asyncio.Semaphore(_DGI_CONCURRENCY)
     matched = 0
     attempted = 0
-    unmatched_names: list[str] = []
+    sample_unmatched: list[str] = []
 
     async def process_url(url: str) -> None:
         nonlocal matched, attempted
@@ -348,24 +425,28 @@ async def run_dgi_pass(
             return
 
         attempted += 1
-        product_id = await match_product(conn, name)
-        if product_id:
+        key = _make_bow_key(name)
+        hit = _bow_match(key, index)
+        if hit:
+            product_id, db_name = hit
             await update_catalog_code(conn, product_id, item_number)
+            index.pop(key, None)
             matched += 1
-            logger.debug("[DGI] ✓ %s → %s", item_number, name)
+            logger.debug("[DGI] ✓ %s  retailer=%r  db=%r", item_number, name, db_name)
         else:
-            unmatched_names.append(f"{item_number}: {name!r}")
+            if len(sample_unmatched) < 30:
+                sample_unmatched.append(f"{item_number}: {name!r}  bow={sorted(key)}")
 
     await asyncio.gather(*[process_url(u) for u in product_urls])
 
     logger.info(
         "[DGI] Pass complete: %d/%d matched (gw_catalog_code set)", matched, attempted
     )
-    if unmatched_names:
+    if sample_unmatched:
         logger.warning(
-            "[DGI] %d products not matched in DB:\n  %s",
-            len(unmatched_names),
-            "\n  ".join(unmatched_names[:20]),
+            "[DGI] Sample unmatched (first %d):\n  %s",
+            len(sample_unmatched),
+            "\n  ".join(sample_unmatched),
         )
     return matched, attempted
 
@@ -388,16 +469,19 @@ async def main(run_mm: bool = True, run_dgi: bool = True) -> None:
         async with await psycopg.AsyncConnection.connect(_DSN) as conn:
             await ensure_column(conn)
 
+            # Load all unmatched products into in-memory BOW index once
+            index = await load_products_index(conn)
+
             total_matched = 0
             total_attempted = 0
 
             if run_mm:
-                m, a = await run_mm_pass(client, conn)
+                m, a = await run_mm_pass(client, conn, index)
                 total_matched += m
                 total_attempted += a
 
             if run_dgi:
-                m, a = await run_dgi_pass(client, conn)
+                m, a = await run_dgi_pass(client, conn, index)
                 total_matched += m
                 total_attempted += a
 
