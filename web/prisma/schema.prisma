@@ -42,11 +42,12 @@ enum StockStatus {
 // ─────────────────────────────────────────
 
 model Product {
-  id            String      @id @default(uuid())
-  slug          String      @unique
-  name          String
-  gwItemNumber  String      @unique @map("gw_item_number")
-  faction       String
+  id             String      @id @default(uuid())
+  slug           String      @unique
+  name           String
+  gwItemNumber   String      @unique @map("gw_item_number")
+  gwCatalogCode  String?     @unique @map("gw_catalog_code")  // retailer-facing XX-XX code (e.g. "48-75")
+  faction        String
   gameSystem    String      @map("game_system")
   category      String
   productType   ProductType @default(standard) @map("product_type")

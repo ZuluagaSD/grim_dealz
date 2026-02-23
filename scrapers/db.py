@@ -105,10 +105,10 @@ async def _upsert_one(
     result: PriceResult,
     stats: UpsertStats,
 ) -> None:
-    # 2. Look up product
+    # 2. Look up product by gw_catalog_code (XX-XX retailer format, e.g. "48-75")
     product_row = await (
         await conn.execute(
-            "SELECT id, gw_rrp_usd FROM products WHERE gw_item_number = %s AND is_active = TRUE",
+            "SELECT id, gw_rrp_usd FROM products WHERE gw_catalog_code = %s AND is_active = TRUE",
             (result.gw_item_number,),
         )
     ).fetchone()
