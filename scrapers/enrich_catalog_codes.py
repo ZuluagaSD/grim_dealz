@@ -101,17 +101,26 @@ _DGI_SLEEP = 0.5
 
 # Words to ignore in bag-of-words matching
 _STOP_WORDS = frozenset(
+    # grammar
     "the a an of and or in on for to at by with from".split()
+    # paint-specific: DB uses "Colour" / MM uses "Paint" — both mean the same
+    + "colour color paint pot".split()
+    # generic filler words that add noise
+    + "miniature miniatures model models kit set box games workshop gw".split()
 )
 
-# Manufacturer / store name prefixes to strip before matching
+# Volume suffixes on paint pots, e.g. "(12ml)", "(24ml)", "(1.1 fl oz)"
+_VOLUME_RE = re.compile(r"\(\s*[\d.]+\s*(?:ml|fl\s*oz)\s*\)", re.IGNORECASE)
+
+# Manufacturer / game-system prefixes to strip before matching
 _STRIP_PREFIXES_RE = re.compile(
-    r"^(games\s+workshop|gw|citadel\s+colour|citadel|"
-    r"warhammer\s+40[,.]?000|warhammer\s+40k|"
-    r"age\s+of\s+sigmar|the\s+horus\s+heresy|"
+    r"^(citadel\s+colour|citadel|"
+    r"warhammer\s+40[,.]?000|warhammer\s+40k|warhammer|"
+    r"age\s+of\s+sigmar|the\s+horus\s+heresy|horus\s+heresy|"
     r"the\s+old\s+world|middle[-\s]earth|"
     r"warcry|necromunda|blood\s+bowl|underworlds|"
-    r"kill\s+team|warhammer\s+quest)[:\s\-]+",
+    r"kill\s+team|warhammer\s+quest|"
+    r"games\s+workshop\s*-\s*gaw|games\s+workshop)[:\s\-]+",
     re.IGNORECASE,
 )
 
@@ -125,15 +134,19 @@ def _make_bow_key(name: str) -> frozenset[str]:
     """Normalize a product name to a bag-of-words key for fuzzy matching.
 
     Handles common differences between Algolia and retailer names:
-      "Combat Patrol: Space Marines"  → {combat, patrol, space, marines}
-      "Space Marines Combat Patrol"   → {combat, patrol, space, marines}  ← same ✓
-      "Games Workshop Space Marines Combat Patrol" → strips "games workshop" ← same ✓
+      "Combat Patrol: Space Marines"           → {combat, patrol, space, marines}
+      "Space Marines Combat Patrol"            → {combat, patrol, space, marines}  ✓
+      "Games Workshop Space Marines Combat Patrol" → same (strips "games workshop") ✓
+      "Citadel Base Paint: Mephiston Red (12ml)" → {base, mephiston, red}
+      "Citadel Colour: Base - Mephiston Red"     → {base, mephiston, red}          ✓
     """
-    # Strip store suffix
+    # Strip store suffix (e.g. " | Miniature Market", " | Table Top Miniatures")
     name = name.split(" | ")[0].strip()
+    # Strip volume suffix on paints: "(12ml)", "(24ml)", "(1.1 fl oz)"
+    name = _VOLUME_RE.sub("", name).strip()
     # Strip manufacturer/game-system prefixes (iteratively — some names have multiple)
-    for _ in range(3):
-        stripped = _STRIP_PREFIXES_RE.sub("", name, count=1).strip()
+    for _ in range(4):
+        stripped = _STRIP_PREFIXES_RE.sub("", name, count=1).strip(" :-")
         if stripped == name:
             break
         name = stripped
@@ -146,8 +159,26 @@ def _bow_match(
     key: frozenset[str],
     index: dict[frozenset[str], tuple[str, str]],
 ) -> tuple[str, str] | None:
-    """Exact bag-of-words match. Returns (product_id, db_name) or None."""
-    return index.get(key)
+    """Bag-of-words match with subset fallback.
+
+    1. Exact key match (same word set)
+    2. Subset match: DB key ⊆ retailer key (retailer adds ≤3 extra words)
+       e.g. DB "Space Marines Intercessors" ← MM "Primaris Space Marines Intercessors"
+
+    Requires DB BOW to have ≥3 words to avoid false-positive subset matches.
+    """
+    # 1. Exact match
+    hit = index.get(key)
+    if hit:
+        return hit
+
+    # 2. Subset: find a DB key that is fully contained in the retailer key
+    if len(key) >= 3:
+        for db_key, value in index.items():
+            if len(db_key) >= 3 and db_key <= key and len(key) - len(db_key) <= 3:
+                return value
+
+    return None
 
 
 # ─────────────────────────────────────────
