@@ -2,6 +2,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import ProductCard from '@/components/server/ProductCard'
+import SearchInput from '@/components/client/SearchInput'
 import { searchProducts } from '@/lib/data'
 
 export const dynamic = 'force-dynamic'
@@ -24,25 +25,7 @@ export default async function SearchPage({
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="mb-6 text-3xl font-bold text-bone">Search</h1>
 
-      {/* Search form */}
-      <form method="GET" className="mb-8">
-        <div className="flex gap-3">
-          <input
-            name="q"
-            type="search"
-            defaultValue={query}
-            placeholder="Search products, factions, game systems..."
-            className="flex-1 rounded-lg border border-ink-rim bg-ink-card px-4 py-2.5 text-base text-bone placeholder:text-bone-faint focus:border-gold/60 focus:outline-none focus:ring-1 focus:ring-gold/20"
-            autoComplete="off"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-gold px-5 py-2.5 text-base font-semibold text-ink transition-all hover:bg-gold-light hover:shadow-gold-glow"
-          >
-            Search
-          </button>
-        </div>
-      </form>
+      <SearchInput defaultValue={query} />
 
       {/* Results */}
       {query && (
