@@ -1,0 +1,158 @@
+// GrimDealz — Prisma Schema
+// Two-URL pattern: DATABASE_URL (pooled, Supavisor port 6543) for app
+//                  DIRECT_URL (direct, port 5432) for migrations only
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────
+// Enums — define before tables, migrate once
+// ─────────────────────────────────────────
+
+enum ProductType {
+  standard
+  battleforce
+  combat_patrol
+  paint
+  codex
+  terrain
+}
+
+// Scrapers MUST normalize raw strings to these values in base_store.py
+// e.g. "In Stock" → in_stock, "Out Of Stock" → out_of_stock
+enum StockStatus {
+  in_stock
+  out_of_stock
+  backorder
+  pre_order
+  limited
+}
+
+// ─────────────────────────────────────────
+// products — canonical GW product catalog
+// Seeded once from warhammer.com via scrapers/seed_catalog.py
+// GW item numbers (e.g. "48-75") are the deduplication key
+// ─────────────────────────────────────────
+
+model Product {
+  id            String      @id @default(uuid())
+  slug          String      @unique
+  name          String
+  gwItemNumber  String      @unique @map("gw_item_number")
+  faction       String
+  gameSystem    String      @map("game_system")
+  category      String
+  productType   ProductType @default(standard) @map("product_type")
+  gwRrpUsd      Decimal     @map("gw_rrp_usd") @db.Decimal(10, 2)
+  imageUrl      String?     @map("image_url")
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  listings Listing[]
+
+  @@map("products")
+}
+
+// ─────────────────────────────────────────
+// stores — authorized GW third-party retailers
+// ─────────────────────────────────────────
+
+model Store {
+  id                  String   @id @default(uuid())
+  slug                String   @unique
+  name                String
+  baseUrl             String   @map("base_url")
+  region              String   @default("US")
+  affiliateTag        String?  @map("affiliate_tag")
+  affiliateNetwork    String?  @map("affiliate_network") // shareasale | impact | awin | direct | amazon
+  commissionPct       Decimal? @map("commission_pct") @db.Decimal(4, 2)
+  typicalDiscountPct  Decimal? @map("typical_discount_pct") @db.Decimal(4, 2)
+  isActive            Boolean  @default(true) @map("is_active")
+
+  listings Listing[]
+
+  @@map("stores")
+}
+
+// ─────────────────────────────────────────
+// listings — product × store price records
+// UNIQUE(product_id, store_id) prevents duplicate scraper insertions
+// discount_pct computed from products.gw_rrp_usd — NOT stored here to
+// avoid the duplication bug (products.gw_rrp_usd is the single source of truth)
+// ─────────────────────────────────────────
+
+model Listing {
+  id              String      @id @default(uuid())
+  productId       String      @map("product_id")
+  storeId         String      @map("store_id")
+  storeProductUrl String?     @map("store_product_url")
+  storeSku        String?     @map("store_sku")
+  currentPrice    Decimal     @map("current_price") @db.Decimal(10, 2)
+  discountPct     Decimal     @map("discount_pct") @db.Decimal(5, 2)
+  inStock         Boolean     @default(true) @map("in_stock")
+  stockStatus     StockStatus @default(in_stock) @map("stock_status")
+  affiliateUrl    String?     @map("affiliate_url")
+  lastScraped     DateTime?   @map("last_scraped")
+  lastCheckedAt   DateTime?   @map("last_checked_at")
+
+  product      Product        @relation(fields: [productId], references: [id])
+  store        Store          @relation(fields: [storeId], references: [id])
+  priceHistory PriceHistory[]
+  clickEvents  ClickEvent[]
+
+  @@unique([productId, storeId])
+  @@index([productId])
+  @@index([storeId])
+  @@index([discountPct])
+  @@index([inStock])
+  @@index([lastCheckedAt])
+  @@map("listings")
+}
+
+// ─────────────────────────────────────────
+// price_history — append-only price log
+// ONLY written when price or stock status changes (not every scrape)
+// This keeps row count manageable (~50-100K/year vs ~120K/day naive)
+// ─────────────────────────────────────────
+
+model PriceHistory {
+  id          String   @id @default(uuid())
+  listingId   String   @map("listing_id")
+  price       Decimal  @db.Decimal(10, 2)
+  discountPct Decimal  @map("discount_pct") @db.Decimal(5, 2)
+  inStock     Boolean  @map("in_stock")
+  scrapedAt   DateTime @default(now()) @map("scraped_at")
+
+  listing Listing @relation(fields: [listingId], references: [id])
+
+  @@index([listingId])
+  @@index([scrapedAt])
+  @@map("price_history")
+}
+
+// ─────────────────────────────────────────
+// click_events — affiliate click tracking
+// Intentionally minimal — no PII stored (no IP, no UA, no geo)
+// Plausible/Umami handles geo and device analytics
+// When user accounts are added (Phase 4+), add: userId String? @map("user_id")
+// ─────────────────────────────────────────
+
+model ClickEvent {
+  id        String   @id @default(uuid())
+  listingId String   @map("listing_id")
+  clickedAt DateTime @default(now()) @map("clicked_at")
+
+  listing Listing @relation(fields: [listingId], references: [id])
+
+  @@index([listingId])
+  @@index([clickedAt])
+  @@map("click_events")
+}

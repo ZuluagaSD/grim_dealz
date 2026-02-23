@@ -1,0 +1,55 @@
+name: Scrape Prices
+
+on:
+  schedule:
+    # Every 4 hours — GW retailer prices change infrequently
+    # Staggered 10 min past the hour to reduce peak load on Supabase
+    - cron: '10 */4 * * *'
+
+  # Allow manual trigger from GitHub Actions UI (useful for testing)
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    name: Run price scrapers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: 'latest'
+
+      - name: Install dependencies
+        working-directory: scrapers
+        run: uv sync
+
+      - name: Install Playwright browsers
+        working-directory: scrapers
+        run: uv run playwright install chromium --with-deps
+
+      - name: Run scrapers
+        working-directory: scrapers
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          AFFILIATE_MINIATURE_MARKET: ${{ secrets.AFFILIATE_MINIATURE_MARKET }}
+          AFFILIATE_DISCOUNT_GAMES_INC: ${{ secrets.AFFILIATE_DISCOUNT_GAMES_INC }}
+          AFFILIATE_NOBLE_KNIGHT: ${{ secrets.AFFILIATE_NOBLE_KNIGHT }}
+          AFFILIATE_FRONTLINE_GAMING: ${{ secrets.AFFILIATE_FRONTLINE_GAMING }}
+          AFFILIATE_ATOMIC_EMPIRE: ${{ secrets.AFFILIATE_ATOMIC_EMPIRE }}
+        run: uv run python -m scrapers.run_all
+
+      # GitHub Actions sends email on workflow failure automatically.
+      # No Slack webhook needed — keep it simple.
