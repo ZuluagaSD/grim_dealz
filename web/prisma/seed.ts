@@ -75,13 +75,13 @@ const stores = [
   {
     slug: 'frontline-gaming',
     name: 'Frontline Gaming',
-    baseUrl: 'https://www.frontlinegaming.org',
+    baseUrl: 'https://store.frontlinegaming.org',
     region: 'US',
     affiliateNetwork: 'impact',
     affiliateTag: null,
     commissionPct: 8.0,
     typicalDiscountPct: 20.0,
-    isActive: false,
+    isActive: true,
   },
   {
     slug: 'amazon',
@@ -103,7 +103,7 @@ const stores = [
     affiliateTag: null,
     commissionPct: 8.0,
     typicalDiscountPct: 20.0,
-    isActive: false,
+    isActive: true,
   },
   {
     slug: 'cool-stuff-inc',

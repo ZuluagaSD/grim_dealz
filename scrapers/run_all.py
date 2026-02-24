@@ -28,6 +28,8 @@ from .db import UpsertStats, upsert_results
 # Phase 1 scrapers — add new imports here as stores are implemented
 from .stores.miniature_market import MiniatureMarketScraper
 from .stores.discount_games_inc import DiscountGamesIncScraper
+from .stores.frontline_gaming import FrontlineGamingScraper
+from .stores.game_nerdz import GameNerdzScraper
 
 load_dotenv()
 
@@ -42,7 +44,8 @@ logger = logging.getLogger(__name__)
 SCRAPERS: list[type[BaseStore]] = [
     MiniatureMarketScraper,
     DiscountGamesIncScraper,
-    # Phase 3: add NoblekKnightScraper, AtomicEmpireScraper, etc.
+    FrontlineGamingScraper,
+    GameNerdzScraper,
 ]
 
 SITE_URL = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://www.grimdealz.com")

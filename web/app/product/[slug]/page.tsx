@@ -33,6 +33,9 @@ function buildProductSchema(
         '@type': 'Product',
         name: product.name,
         ...(product.imageUrl ? { image: product.imageUrl } : {}),
+        brand: { '@type': 'Brand', name: 'Games Workshop' },
+        sku: product.gwItemNumber,
+        mpn: product.gwItemNumber,
         offers: {
           '@type': 'AggregateOffer',
           lowPrice: lowPrice.toFixed(2),
