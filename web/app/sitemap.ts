@@ -6,6 +6,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 
 const GAME_SLUGS = ['warhammer-40k', 'age-of-sigmar', 'horus-heresy', 'the-old-world']
 
+/** Encode characters that are invalid in XML sitemap URLs */
+function xmlSafeUrl(url: string): string {
+  return url.replace(/&/g, '&amp;').replace(/'/g, '&apos;').replace(/"/g, '&quot;')
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: SITE_URL, lastModified: new Date(), priority: 1.0 },
@@ -28,14 +33,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     take: 5000,
   })
   const productPages: MetadataRoute.Sitemap = products.map((p) => ({
-    url: `${SITE_URL}/product/${p.slug}`,
+    url: xmlSafeUrl(`${SITE_URL}/product/${p.slug}`),
     lastModified: p.updatedAt,
     priority: 0.7,
   }))
 
   const factions = await getFactions()
   const factionPages: MetadataRoute.Sitemap = factions.map((f) => ({
-    url: `${SITE_URL}/faction/${f.slug}`,
+    url: xmlSafeUrl(`${SITE_URL}/faction/${f.slug}`),
     lastModified: new Date(),
     priority: 0.8,
   }))
