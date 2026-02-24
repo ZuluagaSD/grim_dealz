@@ -23,6 +23,7 @@ import json
 import logging
 import os
 import re
+from collections.abc import AsyncIterator
 from xml.etree import ElementTree as ET
 
 from bs4 import BeautifulSoup
@@ -157,16 +158,11 @@ class GameNerdzScraper(BaseStore):
         logger.info("[gamenerdz] %d product URLs from sitemap", len(all_urls))
         return all_urls
 
-    async def scrape(self) -> list[PriceResult]:
-        """Scrape all GW products from GameNerdz via sitemap + schema.org JSON-LD."""
-        product_urls = await self._collect_product_urls()
-        if not product_urls:
-            return []
-
+    async def scrape(self) -> AsyncIterator[list[PriceResult]]:
+        """Scrape GW products from GameNerdz, yielding one batch per sitemap page."""
         semaphore = asyncio.Semaphore(_CONCURRENCY)
-        results: list[PriceResult] = []
-        errors = 0
-        skipped = 0
+        page = 1
+        total_results = 0
 
         async def fetch_one(url: str) -> PriceResult | None:
             async with semaphore:
@@ -178,17 +174,26 @@ class GameNerdzScraper(BaseStore):
                     logger.debug("[gamenerdz] %s — %s: %s", url, type(exc).__name__, exc)
                     return None
 
-        for coro in asyncio.as_completed([fetch_one(u) for u in product_urls]):
-            result = await coro
-            if result is not None:
-                results.append(result)
-            elif result is None:
-                # Could be non-GW product (filtered) or a real error — both are None
-                skipped += 1
+        while True:
+            await asyncio.sleep(_SITEMAP_SLEEP)
+            urls = await self._fetch_sitemap_page(page)
+            if not urls:
+                break
 
-        in_stock_count = sum(1 for r in results if r.in_stock)
-        logger.info(
-            "[gamenerdz] Done: %d GW results (%d in stock), %d skipped/errored",
-            len(results), in_stock_count, skipped,
-        )
-        return results
+            batch: list[PriceResult] = []
+            for coro in asyncio.as_completed([fetch_one(u) for u in urls]):
+                result = await coro
+                if result is not None:
+                    batch.append(result)
+
+            logger.debug(
+                "[gamenerdz] Sitemap page %d: %d GW results from %d URLs",
+                page, len(batch), len(urls),
+            )
+            if batch:
+                total_results += len(batch)
+                yield batch
+
+            page += 1
+
+        logger.info("[gamenerdz] Done: %d GW results across %d sitemap pages", total_results, page - 1)

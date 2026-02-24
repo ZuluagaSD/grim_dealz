@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from decimal import Decimal
 
@@ -61,23 +62,20 @@ class UpsertStats:
             logger.warning("[%s] Unmatched item numbers: %s", self.store_slug, self.unmatched[:20])
 
 
-async def upsert_results(
+async def stream_upsert(
     store_slug: str,
-    results: list[PriceResult],
+    scrape_iter: AsyncIterator[list[PriceResult]],
 ) -> UpsertStats:
-    """Upsert a list of scraped PriceResults for one store.
+    """Upsert scraped PriceResults for one store, consuming an async iterator of batches.
 
-    Steps per result:
-    1. Look up store_id from store_slug
-    2. Look up product_id + gw_rrp_usd from gw_item_number
-    3. Compute discount_pct = (rrp - price) / rrp * 100
-    4. Upsert listings ON CONFLICT(product_id, store_id)
-    5. Write price_history only if price or stock_status changed
+    Opens a single DB connection for the entire scrape run. Each batch yielded
+    by the scraper is written immediately, so listings appear in the DB
+    progressively rather than all at once at the end.
     """
-    stats = UpsertStats(store_slug=store_slug, total_scraped=len(results))
+    stats = UpsertStats(store_slug=store_slug)
 
     async with await psycopg.AsyncConnection.connect(_DSN) as conn:
-        # 1. Resolve store_id once
+        # Resolve store_id once for the whole run
         row = await conn.execute(
             "SELECT id FROM stores WHERE slug = %s AND is_active = TRUE",
             (store_slug,),
@@ -87,13 +85,15 @@ async def upsert_results(
             raise ValueError(f"Store not found or inactive: {store_slug!r}")
         store_id: str = store_row[0]
 
-        for result in results:
-            try:
-                await _upsert_one(conn, store_id, result, stats)
-            except Exception as exc:
-                msg = f"{result.gw_item_number}: {exc}"
-                stats.errors.append(msg)
-                logger.exception("[%s] Error upserting %s", store_slug, result.gw_item_number)
+        async for batch in scrape_iter:
+            stats.total_scraped += len(batch)
+            for result in batch:
+                try:
+                    await _upsert_one(conn, store_id, result, stats)
+                except Exception as exc:
+                    msg = f"{result.gw_item_number}: {exc}"
+                    stats.errors.append(msg)
+                    logger.exception("[%s] Error upserting %s", store_slug, result.gw_item_number)
 
     stats.log_summary()
     return stats

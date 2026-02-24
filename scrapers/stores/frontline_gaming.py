@@ -21,6 +21,7 @@ import asyncio
 import logging
 import os
 import re
+from collections.abc import AsyncIterator
 
 from scrapers.base_store import BaseStore, PriceResult, StockStatus
 
@@ -98,35 +99,26 @@ class FrontlineGamingScraper(BaseStore):
             logger.warning("[frontline-gaming] Page %d error: %s", page, exc)
             return []
 
-    async def scrape(self) -> list[PriceResult]:
-        """Scrape all GW products from Frontline Gaming via Shopify collection API."""
-        all_products: list[dict] = []
+    async def scrape(self) -> AsyncIterator[list[PriceResult]]:
+        """Scrape GW products from Frontline Gaming, yielding one batch per API page."""
         page = 1
+        total_results = 0
 
         while True:
             await asyncio.sleep(_SLEEP)
             products = await self._fetch_page(page)
             if not products:
                 break
-            all_products.extend(products)
-            logger.debug("[frontline-gaming] Page %d: %d products", page, len(products))
+
+            batch = [r for p in products for r in _parse_product(p)]
+            logger.debug(
+                "[frontline-gaming] Page %d: %d products → %d results",
+                page, len(products), len(batch),
+            )
+            if batch:
+                total_results += len(batch)
+                yield batch
+
             page += 1
 
-        logger.info("[frontline-gaming] %d products fetched across %d pages", len(all_products), page - 1)
-
-        semaphore = asyncio.Semaphore(_CONCURRENCY)
-        results: list[PriceResult] = []
-
-        async def parse_one(product: dict) -> list[PriceResult]:
-            async with semaphore:
-                return _parse_product(product)
-
-        for coro in asyncio.as_completed([parse_one(p) for p in all_products]):
-            results.extend(await coro)
-
-        in_stock_count = sum(1 for r in results if r.in_stock)
-        logger.info(
-            "[frontline-gaming] Done: %d results (%d in stock)",
-            len(results), in_stock_count,
-        )
-        return results
+        logger.info("[frontline-gaming] Done: %d results across %d pages", total_results, page - 1)

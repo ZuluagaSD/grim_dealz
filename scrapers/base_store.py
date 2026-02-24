@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import abc
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -196,13 +197,15 @@ class BaseStore(abc.ABC):
         return response
 
     @abc.abstractmethod
-    async def scrape(self) -> list[PriceResult]:
-        """Scrape all products from this store.
+    async def scrape(self) -> AsyncIterator[list[PriceResult]]:
+        """Scrape products from this store, yielding batches as they are ready.
 
-        Returns a list of PriceResult objects. gw_item_number on each result
-        must be in the exact format used in the products table (e.g. "48-75").
+        Yields lists of PriceResult objects — one list per natural scraping unit
+        (e.g. one API page, one sitemap page's worth of fetches, or a fixed-size
+        chunk of results). The caller upserts each batch immediately so listings
+        appear in the DB progressively rather than all at once at the end.
 
-        Callers (db.py) will silently skip results where gw_item_number
-        does not match a row in products — log mismatches for debugging.
+        gw_item_number on each result must match products.gw_catalog_code
+        (e.g. "48-75"). Results with no matching product are silently skipped.
         """
         ...

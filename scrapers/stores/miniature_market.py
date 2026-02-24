@@ -20,6 +20,7 @@ import gzip
 import logging
 import os
 import re
+from collections.abc import AsyncIterator
 from xml.etree import ElementTree as ET
 
 from bs4 import BeautifulSoup
@@ -38,6 +39,7 @@ _AFFILIATE_TAG = os.environ.get("AFFILIATE_MINIATURE_MARKET")
 # Fetch 8 pages concurrently; 0.4 s polite delay inside each semaphore slot
 _CONCURRENCY = 8
 _SLEEP = 0.4
+_BATCH_SIZE = 50
 
 
 def _extract_item_number(url: str) -> str | None:
@@ -121,15 +123,14 @@ class MiniatureMarketScraper(BaseStore):
         logger.info("[miniature-market] %d GW product URLs in sitemap", len(urls))
         return urls
 
-    async def scrape(self) -> list[PriceResult]:
-        """Scrape all GW products from Miniature Market via sitemap + static HTML."""
+    async def scrape(self) -> AsyncIterator[list[PriceResult]]:
+        """Scrape GW products from Miniature Market, yielding batches of ~50 as they arrive."""
         product_urls = await self._fetch_product_urls()
         if not product_urls:
-            return []
+            return
 
         semaphore = asyncio.Semaphore(_CONCURRENCY)
-        results: list[PriceResult] = []
-        errors = 0
+        total_results = 0
 
         async def fetch_one(url: str) -> PriceResult | None:
             item_number = _extract_item_number(url)
@@ -147,16 +148,18 @@ class MiniatureMarketScraper(BaseStore):
                     )
                     return None
 
+        batch: list[PriceResult] = []
         for coro in asyncio.as_completed([fetch_one(u) for u in product_urls]):
             result = await coro
             if result is not None:
-                results.append(result)
-            else:
-                errors += 1
+                batch.append(result)
+                if len(batch) >= _BATCH_SIZE:
+                    total_results += len(batch)
+                    yield batch
+                    batch = []
 
-        in_stock_count = sum(1 for r in results if r.in_stock)
-        logger.info(
-            "[miniature-market] Done: %d results (%d in stock), %d errors/skipped",
-            len(results), in_stock_count, errors,
-        )
-        return results
+        if batch:
+            total_results += len(batch)
+            yield batch
+
+        logger.info("[miniature-market] Done: %d results", total_results)

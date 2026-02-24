@@ -22,8 +22,8 @@ import sys
 import httpx
 from dotenv import load_dotenv
 
-from .base_store import BaseStore, PriceResult
-from .db import UpsertStats, upsert_results
+from .base_store import BaseStore
+from .db import UpsertStats, stream_upsert
 
 # Phase 1 scrapers — add new imports here as stores are implemented
 from .stores.miniature_market import MiniatureMarketScraper
@@ -53,18 +53,12 @@ REVALIDATE_SECRET = os.environ.get("REVALIDATE_SECRET", "")
 
 
 async def run_scraper(scraper_cls: type[BaseStore]) -> UpsertStats | None:
-    """Run a single scraper and upsert results. Returns stats or None on failure."""
+    """Run a single scraper, streaming results into the DB as each batch arrives."""
     name = scraper_cls.__name__
     try:
         async with scraper_cls() as scraper:
             logger.info("[%s] Starting scrape", name)
-            results: list[PriceResult] = await scraper.scrape()
-            logger.info("[%s] Scraped %d products", name, len(results))
-
-        stats = await upsert_results(
-            store_slug=scraper.store_slug,
-            results=results,
-        )
+            stats = await stream_upsert(scraper.store_slug, scraper.scrape())
         return stats
     except Exception:
         logger.exception("[%s] Scraper failed", name)

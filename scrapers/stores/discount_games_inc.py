@@ -19,6 +19,7 @@ import asyncio
 import logging
 import os
 import re
+from collections.abc import AsyncIterator
 
 from bs4 import BeautifulSoup
 
@@ -53,6 +54,7 @@ _PRODUCT_SLEEP = 0.5
 # Category pagination: 3 categories scraped concurrently; 0.5 s between page fetches per category
 _CAT_CONCURRENCY = 3
 _PAGE_SLEEP = 0.5
+_BATCH_SIZE = 50
 
 
 def _parse_item_number(mpn: str) -> str | None:
@@ -182,15 +184,14 @@ class DiscountGamesIncScraper(BaseStore):
         logger.info("[discount-games-inc] %d unique product URLs collected", len(collected))
         return collected
 
-    async def scrape(self) -> list[PriceResult]:
-        """Scrape all GW products from Discount Games Inc."""
+    async def scrape(self) -> AsyncIterator[list[PriceResult]]:
+        """Scrape GW products from Discount Games Inc, yielding batches of ~50 as they arrive."""
         product_urls = await self._collect_product_urls()
         if not product_urls:
-            return []
+            return
 
         semaphore = asyncio.Semaphore(_CONCURRENCY)
-        results: list[PriceResult] = []
-        errors = 0
+        total_results = 0
 
         async def fetch_one(url: str) -> PriceResult | None:
             async with semaphore:
@@ -205,16 +206,18 @@ class DiscountGamesIncScraper(BaseStore):
                     )
                     return None
 
+        batch: list[PriceResult] = []
         for coro in asyncio.as_completed([fetch_one(u) for u in product_urls]):
             result = await coro
             if result is not None:
-                results.append(result)
-            else:
-                errors += 1
+                batch.append(result)
+                if len(batch) >= _BATCH_SIZE:
+                    total_results += len(batch)
+                    yield batch
+                    batch = []
 
-        in_stock_count = sum(1 for r in results if r.in_stock)
-        logger.info(
-            "[discount-games-inc] Done: %d results (%d in stock), %d errors/skipped",
-            len(results), in_stock_count, errors,
-        )
-        return results
+        if batch:
+            total_results += len(batch)
+            yield batch
+
+        logger.info("[discount-games-inc] Done: %d results", total_results)
