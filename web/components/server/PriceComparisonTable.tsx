@@ -21,11 +21,11 @@ export default function PriceComparisonTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-ink-rim">
-      <table className="min-w-full divide-y divide-ink-rim">
+    <div className="overflow-x-auto rounded-lg border border-ink-rim">
+      <table className="w-full min-w-[540px] divide-y divide-ink-rim">
         <thead className="bg-ink-raised">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-bone-faint">
+            <th className="w-2/5 px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-bone-faint">
               Store
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-bone-faint">
@@ -64,12 +64,12 @@ export default function PriceComparisonTable({
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-right">
+              <td className="whitespace-nowrap px-4 py-3 text-right">
                 <span className={`text-sm font-bold ${idx === 0 ? 'text-green-400' : 'text-bone'}`}>
                   ${listing.currentPrice.toFixed(2)}
                 </span>
               </td>
-              <td className="px-4 py-3 text-right">
+              <td className="whitespace-nowrap px-4 py-3 text-right">
                 {listing.discountPct > 0 ? (
                   <span className="text-sm font-medium text-green-400">
                     -{Math.round(listing.discountPct)}%
@@ -78,7 +78,7 @@ export default function PriceComparisonTable({
                   <span className="text-sm text-bone-faint">—</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-center">
+              <td className="whitespace-nowrap px-4 py-3 text-center">
                 {listing.inStock ? (
                   <span className="inline-flex items-center rounded-full bg-green-900/40 px-2 py-0.5 text-xs font-medium text-green-400">
                     In Stock
@@ -89,7 +89,7 @@ export default function PriceComparisonTable({
                   </span>
                 )}
               </td>
-              <td className="px-4 py-3 text-right">
+              <td className="whitespace-nowrap px-4 py-3 text-right">
                 <Link
                   href={`/go/${listing.storeSlug}/${listing.id}`}
                   className={`inline-flex items-center rounded px-3 py-1.5 text-xs font-semibold transition-all ${
@@ -110,12 +110,12 @@ export default function PriceComparisonTable({
             <td className="px-4 py-3 text-sm font-medium text-bone-muted">
               GW Direct (RRP)
             </td>
-            <td className="px-4 py-3 text-right text-sm font-semibold text-bone">
+            <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-bone">
               ${gwRrpUsd.toFixed(2)}
             </td>
-            <td className="px-4 py-3 text-right text-sm text-bone-faint">—</td>
-            <td className="px-4 py-3 text-center text-sm text-bone-faint">—</td>
-            <td className="px-4 py-3 text-right">
+            <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-bone-faint">—</td>
+            <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-bone-faint">—</td>
+            <td className="whitespace-nowrap px-4 py-3 text-right">
               {gwUrl && (
                 <a
                   href={gwUrl}
