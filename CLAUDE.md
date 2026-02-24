@@ -187,6 +187,21 @@ Never store `gw_rrp_usd` on `listings` (was removed as a schema bloat issue).
 6. Update the store's `is_active = True` in seed.ts + re-run seed
 7. Apply for affiliate program (requires live site URL)
 
+## Deploying Scrapers
+
+When asked to "deploy" scrapers:
+1. Commit any uncommitted changes
+2. `git push origin master`
+3. SSH into `zulu-pi` and run the deploy script:
+   ```bash
+   ssh zulu-pi "bash ~/Git/grim_dealz/scrapers/run_scrape.sh"
+   ```
+   The script does: `git pull` → `uv sync` → `python -m scrapers.run_all`, with logs saved to `~/Git/grim_dealz/logs/`.
+
+SSH config: `Host zulu-pi → 192.168.0.106, user zulu, key ~/.ssh/id_ed25519`
+`uv` is at `~/.local/bin/uv` on the Pi (not in system PATH).
+Repo path on Pi: `~/Git/grim_dealz/`
+
 ## Running Locally
 
 ```bash
