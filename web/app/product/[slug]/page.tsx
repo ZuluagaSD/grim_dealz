@@ -7,7 +7,7 @@ import PriceHistoryChart from '@/components/client/PriceHistoryChart'
 import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams } from '@/lib/data'
 import type { ProductWithListings, SerializedListing } from '@/lib/types'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 function buildProductSchema(
   product: ProductWithListings,

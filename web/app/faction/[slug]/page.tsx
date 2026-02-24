@@ -6,7 +6,7 @@ import { getFactionProducts, getFactions } from '@/lib/data'
 export const revalidate = 21600
 export const dynamicParams = true
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 export async function generateStaticParams() {
   const factions = await getFactions()

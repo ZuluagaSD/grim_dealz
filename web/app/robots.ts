@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/go/', '/api/', '/admin/'],
       },
     ],
-    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'}/sitemap.xml`,
+    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'}/sitemap.xml`,
   }
 }

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 const websiteSchema = {
   '@context': 'https://schema.org',

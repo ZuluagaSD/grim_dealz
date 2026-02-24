@@ -7,7 +7,7 @@ import { getProductsByType, ProductType } from '@/lib/data'
 export const revalidate = 3600
 
 const CURRENT_YEAR = new Date().getFullYear()
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 export const metadata: Metadata = {
   title: `Warhammer Battleforce Tracker ${CURRENT_YEAR} — Prices & Deals`,

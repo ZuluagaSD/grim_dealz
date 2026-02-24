@@ -8,7 +8,7 @@ import { getGameSystemProducts, GAME_SYSTEM_MAP, getFactions } from '@/lib/data'
 export const revalidate = 21600
 export const dynamicParams = false
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 export function generateStaticParams() {
   return Object.keys(GAME_SYSTEM_MAP).map((slug) => ({ slug }))

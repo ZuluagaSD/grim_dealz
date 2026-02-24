@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description:
     'Compare Warhammer 40K, Age of Sigmar, and Horus Heresy prices across 10+ authorized US retailers. Find the cheapest price and save up to 25% off GW RRP.',
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+    process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
   ),
   openGraph: {
     type: 'website',
