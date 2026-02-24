@@ -43,30 +43,6 @@ export default function PriceComparisonTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-rim bg-ink-card">
-          {/* GW RRP row */}
-          <tr className="bg-ink-raised">
-            <td className="px-4 py-3 text-sm font-medium text-bone-muted">
-              GW Direct (RRP)
-            </td>
-            <td className="px-4 py-3 text-right text-sm font-semibold text-bone">
-              ${gwRrpUsd.toFixed(2)}
-            </td>
-            <td className="px-4 py-3 text-right text-sm text-bone-faint">—</td>
-            <td className="px-4 py-3 text-center text-sm text-bone-faint">—</td>
-            <td className="px-4 py-3 text-right">
-              {gwUrl && (
-                <a
-                  href={gwUrl}
-                  className="inline-flex items-center rounded border border-ink-rim bg-ink-high px-3 py-1.5 text-xs font-semibold text-bone-muted transition-colors hover:border-bone-faint hover:text-bone"
-                  rel="nofollow"
-                  target="_blank"
-                >
-                  Buy →
-                </a>
-              )}
-            </td>
-          </tr>
-
           {listings.map((listing, idx) => (
             <tr
               key={listing.id}
@@ -128,6 +104,30 @@ export default function PriceComparisonTable({
               </td>
             </tr>
           ))}
+
+          {/* GW RRP row — always last */}
+          <tr className="bg-ink-raised">
+            <td className="px-4 py-3 text-sm font-medium text-bone-muted">
+              GW Direct (RRP)
+            </td>
+            <td className="px-4 py-3 text-right text-sm font-semibold text-bone">
+              ${gwRrpUsd.toFixed(2)}
+            </td>
+            <td className="px-4 py-3 text-right text-sm text-bone-faint">—</td>
+            <td className="px-4 py-3 text-center text-sm text-bone-faint">—</td>
+            <td className="px-4 py-3 text-right">
+              {gwUrl && (
+                <a
+                  href={gwUrl}
+                  className="inline-flex items-center rounded border border-ink-rim bg-ink-high px-3 py-1.5 text-xs font-semibold text-bone-muted transition-colors hover:border-bone-faint hover:text-bone"
+                  rel="nofollow"
+                  target="_blank"
+                >
+                  Buy →
+                </a>
+              )}
+            </td>
+          </tr>
         </tbody>
       </table>
 
