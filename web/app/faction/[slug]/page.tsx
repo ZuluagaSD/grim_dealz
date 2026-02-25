@@ -18,7 +18,8 @@ export async function generateMetadata({
 }: {
   params: { slug: string }
 }): Promise<Metadata> {
-  const factionName = params.slug
+  const decodedSlug = decodeURIComponent(params.slug)
+  const factionName = decodedSlug
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
@@ -39,7 +40,8 @@ export default async function FactionPage({
 }) {
   const products = await getFactionProducts(params.slug)
 
-  const factionName = params.slug
+  const decodedSlug = decodeURIComponent(params.slug)
+  const factionName = decodedSlug
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
