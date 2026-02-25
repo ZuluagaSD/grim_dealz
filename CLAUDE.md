@@ -1,20 +1,20 @@
 # GrimDealz — CLAUDE.md
 
-Warhammer price comparison site. Next.js 14 frontend + Python scrapers + Supabase PostgreSQL.
+Warhammer price comparison site. Next.js 14 frontend + Supabase PostgreSQL.
+Scrapers live in the separate `dagster` repo (Dagster on Raspberry Pi, every 4h).
 
 ## Stack
 
 - **Frontend:** Next.js 14 App Router + Tailwind CSS → Vercel
 - **DB:** PostgreSQL via Supabase + Prisma ORM
-- **Scrapers:** Python 3.11+ with `uv`, httpx + Playwright + tenacity → GitHub Actions cron
-- **Package manager:** `npm` (web/), `uv` (scrapers/)
+- **Scrapers:** Dagster repo (`~/Git/Personal/dagster`) — runs on `zulu-pi`, schedule every 4h
+- **Package manager:** `npm` (web/)
 
 ## Project Structure
 
 ```
 grim_dealz/
 ├── web/            # Next.js 14 app (App Router)
-├── scrapers/       # Python scraper package
 ├── shared/schemas/ # JSON Schema contracts between Python and TypeScript
 └── docs/plans/     # Feature plans
 ```
@@ -112,39 +112,23 @@ No PII stored in `click_events`. Plausible/Umami handles geo + device analytics.
 
 ### Stock Status Normalization
 
-Raw retailer strings → canonical enum values. **All normalization happens once in `base_store.py`.**
+Raw retailer strings → canonical enum values. Normalization happens in the `dagster` repo (`scrapers/grim_dealz/grim_dealz/base_store.py`).
 
-```python
-# scrapers/base_store.py
-normalize_stock_status("In Stock")     # → StockStatus.in_stock
-normalize_stock_status("Sold Out")     # → StockStatus.out_of_stock
-normalize_stock_status("Pre-Order")    # → StockStatus.pre_order
-```
-
-If a new store uses an unrecognized string, add it to `_STOCK_NORMALIZATION` in `base_store.py`.
+Canonical values (must match Prisma `StockStatus` enum): `in_stock`, `out_of_stock`, `backorder`, `pre_order`, `limited`.
 
 ### Price History — Write on Change Only
 
-Only write `price_history` when `current_price` OR `stock_status` changes. **Not every scrape.**
-
-```python
-# db.py
-if prev_price != current_price or prev_status != stock_status:
-    await conn.execute("INSERT INTO price_history ...")
-```
-
-This keeps row count ~50-100K/year instead of ~120K/day.
+Only `price_history` rows are written when `current_price` OR `stock_status` changes — not every scrape. This keeps row count ~50-100K/year instead of ~120K/day. Logic lives in the `dagster` repo (`db.py`).
 
 ### discount_pct — Computed, Not Stored on Listing
 
-`products.gw_rrp_usd` is the single source of truth.
+`products.gw_rrp_usd` is the single source of truth. `discount_pct` is computed during upsert in the `dagster` repo:
 
-```python
-# db.py — computed during upsert
+```
 discount_pct = (gw_rrp_usd - current_price) / gw_rrp_usd * 100
 ```
 
-Never store `gw_rrp_usd` on `listings` (was removed as a schema bloat issue).
+Never store `gw_rrp_usd` on `listings`.
 
 ## TypeScript Conventions
 
@@ -152,22 +136,6 @@ Never store `gw_rrp_usd` on `listings` (was removed as a schema bloat issue).
 - ESLint: `@typescript-eslint/no-explicit-any: error` + `@typescript-eslint/no-floating-promises: error`
 - Enums are Prisma-level only (not TypeScript enums) — import from `@prisma/client`
 - All async fire-and-forget calls use explicit `void`: `void logClick(id)`
-
-## Python Conventions
-
-- Python 3.12, `uv` for dependency management
-- **Windows only:** psycopg3 async requires `SelectorEventLoop` (ProactorEventLoop, default in 3.12, is incompatible):
-  ```python
-  if sys.platform == "win32":
-      asyncio.run(main(), loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()))
-  else:
-      asyncio.run(main())
-  ```
-- Type annotations on all public functions
-- `StockStatus` is `StrEnum` in `base_store.py` — values must match Prisma schema exactly
-- All scrapers are `async with` context managers extending `BaseStore`
-- Validate `PriceResult` against `shared/schemas/price_result.schema.json` before DB write (jsonschema)
-- Rate limit: `await asyncio.sleep(3)` minimum between pages within a scraper
 
 ## DB Conventions
 
@@ -179,28 +147,22 @@ Never store `gw_rrp_usd` on `listings` (was removed as a schema bloat issue).
 
 ## Adding a New Store
 
-1. Create `scrapers/stores/<store_slug>.py` extending `BaseStore`
+1. Add the store scraper in the `dagster` repo (`scrapers/grim_dealz/grim_dealz/stores/<store_slug>.py`)
 2. Set `store_slug` to match `stores.slug` in DB
-3. Implement `scrape() -> list[PriceResult]`
-4. Use `normalize_stock_status()` for all stock strings
-5. Add to `SCRAPERS` list in `run_all.py`
-6. Update the store's `is_active = True` in seed.ts + re-run seed
-7. Apply for affiliate program (requires live site URL)
+3. Add asset + wire into `revalidate_cache` deps in `assets.py`
+4. Update the store's `is_active = True` in `web/prisma/seed.ts` + re-run seed
+5. Apply for affiliate program (requires live site URL)
 
 ## Deploying Scrapers
 
-When asked to "deploy" scrapers:
-1. Commit any uncommitted changes
-2. `git push origin master`
-3. SSH into `zulu-pi` and run the deploy script:
-   ```bash
-   ssh zulu-pi "bash ~/Git/grim_dealz/scrapers/run_scrape.sh"
-   ```
-   The script does: `git pull` → `uv sync` → `python -m scrapers.run_all`, with logs saved to `~/Git/grim_dealz/logs/`.
-
+Scrapers are managed in the `dagster` repo. To deploy changes:
+```bash
+cd ~/Git/Personal/dagster
+git pull origin master
+ssh zulu-pi "cd ~/dagster && docker compose build && docker compose up -d"
+```
+Dagster UI: `http://zulu-pi:3000`
 SSH config: `Host zulu-pi → 192.168.0.106, user zulu, key ~/.ssh/id_ed25519`
-`uv` is at `~/.local/bin/uv` on the Pi (not in system PATH).
-Repo path on Pi: `~/Git/grim_dealz/`
 
 ## Running Locally
 
@@ -211,11 +173,6 @@ npm install
 npx prisma generate
 npx prisma migrate dev  # or db push for dev
 npm run dev
-
-# Scrapers
-cd scrapers
-uv sync
-uv run python -m scrapers.run_all  # dry run: add DRY_RUN=1
 
 # Seed stores
 cd web

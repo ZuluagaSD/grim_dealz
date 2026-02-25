@@ -1,1 +1,0 @@
-# GrimDealz scrapers package
