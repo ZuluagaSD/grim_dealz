@@ -120,6 +120,15 @@ SKIP_FACTION_TERMS = frozenset({
     "gaming accessories",
 })
 
+# WH40K lvl1 umbrella categories that group multiple armies.
+# When found at lvl1 we look one level deeper (lvl2) for the specific army name.
+# e.g. "Warhammer 40,000 > Xenos Armies > Necrons" → faction = "Necrons"
+WH40K_UMBRELLA_TERMS = frozenset({
+    "xenos armies",
+    "armies of chaos",
+    "armies of the imperium",
+})
+
 # GW catalog number: 11-digit number (e.g. "99120101309")
 GW_CATALOG_RE = re.compile(r"\b(\d{11})\b")
 
@@ -217,11 +226,12 @@ def _extract_game_system_faction(game_systems_root: dict[str, Any]) -> tuple[str
 
     GameSystemsRoot structure:
       lvl0: ["Warhammer 40,000"]
-      lvl1: ["Warhammer 40,000 > Space Marines", ...]
-      lvl2: ["Warhammer 40,000 > Space Marines > Ultramarines", ...]
+      lvl1: ["Warhammer 40,000 > Xenos Armies", ...]
+      lvl2: ["Warhammer 40,000 > Xenos Armies > Necrons", ...]
 
-    WH40K/Heresy/etc.: faction is at lvl1 (e.g., "WH40K > Space Marines")
-    AoS: faction is at lvl2 via Grand Alliance (e.g., "AoS > Grand Alliance Order > Stormcast")
+    WH40K: specific armies may be at lvl1 (e.g. "Space Marines") or buried under
+      an umbrella at lvl1 (e.g. "Xenos Armies") with the army name at lvl2.
+    AoS: faction is at lvl2 via Grand Alliance (e.g. "AoS > Grand Alliance Order > Stormcast")
 
     Returns (game_system, faction).
     """
@@ -232,8 +242,7 @@ def _extract_game_system_faction(game_systems_root: dict[str, Any]) -> tuple[str
     game_system = lvl0[0] if lvl0 else "Warhammer 40,000"
     faction = "Multi-faction"
 
-    # Step 1: Try lvl1 first — works for WH40K, Horus Heresy, Old World, etc.
-    # where the faction is at level 1 (e.g., "Warhammer 40,000 > Space Marines")
+    # Step 1: Try lvl1 first — works for WH40K armies named directly there (e.g. "Space Marines")
     for entry in lvl1:
         parts = [p.strip() for p in entry.split(">")]
         if len(parts) >= 2:
@@ -242,16 +251,27 @@ def _extract_game_system_faction(game_systems_root: dict[str, Any]) -> tuple[str
                 faction = candidate
                 break
 
-    # Step 2: If still multi-faction, or only got a Grand Alliance umbrella (AoS pattern),
-    # look deeper in lvl2 for the specific AoS faction
-    if faction == "Multi-faction" or faction.lower().startswith("grand alliance"):
+    # Step 2: If lvl1 gave an umbrella category, look at lvl2 for the specific army.
+    # Handles two patterns:
+    #   WH40K: "Warhammer 40,000 > Xenos Armies > Necrons"      → "Necrons"
+    #   AoS:   "Age of Sigmar > Grand Alliance Order > Stormcast" → "Stormcast Eternals"
+    is_umbrella = (
+        faction == "Multi-faction"
+        or faction.lower().startswith("grand alliance")
+        or faction.lower() in WH40K_UMBRELLA_TERMS
+    )
+    if is_umbrella:
         for entry in lvl2:
             parts = [p.strip() for p in entry.split(">")]
-            # AoS: "Age of Sigmar > Grand Alliance Order > Lumineth Realm-lords"
-            # We want parts[2] when parts[1] is "Grand Alliance X"
-            if len(parts) >= 3 and parts[1].lower().startswith("grand alliance"):
+            if len(parts) >= 3:
+                umbrella = parts[1].lower()
                 candidate = parts[2]
-                if candidate.lower() not in SKIP_FACTION_TERMS:
+                # AoS: parts[1] must be a Grand Alliance term
+                # WH40K: parts[1] must be a known umbrella category
+                if (
+                    umbrella.startswith("grand alliance")
+                    or umbrella in WH40K_UMBRELLA_TERMS
+                ) and candidate.lower() not in SKIP_FACTION_TERMS:
                     faction = candidate
                     break
 
@@ -375,7 +395,9 @@ async def upsert_product(conn: psycopg.AsyncConnection, p: RawProduct) -> bool:
             %s, %s, %s,
             TRUE, NOW(), NOW()
         )
-        ON CONFLICT (gw_item_number) DO UPDATE SET gw_url = EXCLUDED.gw_url
+        ON CONFLICT (gw_item_number) DO UPDATE SET
+            faction = EXCLUDED.faction,
+            gw_url  = EXCLUDED.gw_url
         RETURNING id
         """,
         (
