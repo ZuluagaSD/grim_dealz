@@ -218,18 +218,26 @@ export const getTopDeals = cache(
 export const getFactionProducts = cache(
   unstable_cache(
     async (factionSlug: string, limit = 48): Promise<ProductCardData[]> => {
-      // Convert kebab-case slug to title case faction name
-      // "space-marines" → "Space Marines"
-      const faction = factionSlug
-        .split('-')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ')
+      // Resolve slug → canonical faction name stored in DB.
+      // Simple title-casing (e.g. "flesh-eater-courts" → "Flesh Eater Courts") fails for
+      // faction names that contain hyphens (e.g. "Flesh-eater Courts", "Lumineth Realm-lords").
+      // Instead, fetch all distinct faction names and find the one whose slug matches.
+      const factionRows = await prisma.product.findMany({
+        where: { isActive: true },
+        select: { faction: true },
+        distinct: ['faction'],
+      })
+      const faction = factionRows.find(
+        (f) => f.faction.toLowerCase().replace(/\s+/g, '-') === factionSlug
+      )?.faction
+
+      if (!faction) return []
 
       const products = await prisma.product.findMany({
         where: { isActive: true, faction },
         include: {
           listings: {
-            where: { inStock: true, store: { isActive: true } },
+            where: { store: { isActive: true } },
             include: { store: true },
             orderBy: { currentPrice: 'asc' },
             take: 1,
