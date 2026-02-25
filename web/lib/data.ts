@@ -102,7 +102,7 @@ export const getProduct = cache(
           listings: {
             where: { store: { isActive: true } },
             include: { store: true },
-            orderBy: { currentPrice: 'asc' },
+            orderBy: [{ inStock: 'desc' }, { currentPrice: 'asc' }],
           },
         },
       })
@@ -121,7 +121,7 @@ export const getProductListings = cache(
           listings: {
             where: { store: { isActive: true } },
             include: { store: true },
-            orderBy: { currentPrice: 'asc' },
+            orderBy: [{ inStock: 'desc' }, { currentPrice: 'asc' }],
           },
         },
       })
