@@ -29,7 +29,7 @@ export default function MobileNav() {
           <nav className="flex flex-col py-1">
             {[
               { href: '/deals', label: 'Deals' },
-              { href: '/faction/space-marines', label: 'Factions' },
+              { href: '/factions', label: 'Factions' },
               { href: '/battleforce-tracker', label: 'Battleforce Tracker' },
               { href: '/search', label: 'Search' },
             ].map((link) => (

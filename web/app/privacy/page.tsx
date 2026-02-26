@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'GrimDealz privacy policy and affiliate disclosure.',
+  alternates: { canonical: '/privacy' },
 }
 
 export default function PrivacyPage() {

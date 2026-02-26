@@ -22,10 +22,15 @@ export async function generateMetadata({
   const gameName = GAME_SYSTEM_MAP[params.slug]
   if (!gameName) return {}
 
+  const products = await getGameSystemProducts(params.slug)
+  const hasProducts = products.length > 0
+
   return {
     title: `${gameName} Prices — Compare All Products`,
     description: `Compare all ${gameName} Warhammer prices across 10+ authorized US retailers. Browse by faction and find the best deals.`,
     alternates: { canonical: `/game/${params.slug}` },
+    // noindex game pages with no products — thin content
+    ...(!hasProducts && { robots: { index: false, follow: true } }),
   }
 }
 

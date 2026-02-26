@@ -22,6 +22,11 @@ export const GAME_SYSTEM_MAP: Record<string, string> = {
   'the-old-world': 'The Old World',
 }
 
+// Reverse lookup: game system display name → slug
+export const GAME_SYSTEM_SLUG_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(GAME_SYSTEM_MAP).map(([slug, name]) => [name, slug])
+)
+
 // ─────────────────────────────────────────
 // Serialization helpers
 // Prisma Decimal objects serialize to strings when JSON-stringified by
@@ -435,5 +440,71 @@ export const getGameSystemProducts = cache(
     },
     ['game-system-products'],
     { revalidate: 21600, tags: ['products'] }
+  )
+)
+
+// Related products for a product page — same faction, excluding current product
+export const getRelatedProducts = cache(
+  unstable_cache(
+    async (factionSlug: string, excludeSlug: string, limit = 8): Promise<ProductCardData[]> => {
+      const factionRows = await prisma.product.findMany({
+        where: { isActive: true },
+        select: { faction: true },
+        distinct: ['faction'],
+      })
+      const faction = factionRows.find(
+        (f) => f.faction.toLowerCase().replace(/\s+/g, '-') === factionSlug
+      )?.faction
+
+      if (!faction) return []
+
+      const products = await prisma.product.findMany({
+        where: {
+          isActive: true,
+          faction,
+          slug: { not: excludeSlug },
+          listings: { some: { store: { isActive: true } } },
+        },
+        include: {
+          listings: {
+            where: { store: { isActive: true } },
+            include: { store: true },
+            orderBy: { currentPrice: 'asc' },
+            take: 1,
+          },
+        },
+        orderBy: { name: 'asc' },
+        take: limit,
+      })
+
+      return products.map((p) => productToCardData(p))
+    },
+    ['related-products'],
+    { revalidate: 14400, tags: ['products'] }
+  )
+)
+
+// Faction with listing-backed product count — for sitemap filtering
+export const getFactionsWithListings = cache(
+  unstable_cache(
+    async (): Promise<FactionSummary[]> => {
+      const factions = await getFactions()
+      // Only return factions that have at least one product with an active listing
+      const factsWithListings = await Promise.all(
+        factions.map(async (f) => {
+          const count = await prisma.product.count({
+            where: {
+              isActive: true,
+              faction: f.faction,
+              listings: { some: { store: { isActive: true } } },
+            },
+          })
+          return { ...f, productCount: count }
+        })
+      )
+      return factsWithListings.filter((f) => f.productCount > 0)
+    },
+    ['factions-with-listings'],
+    { revalidate: 86400, tags: ['products'] }
   )
 )

@@ -1,7 +1,10 @@
 // Deals page — ISR 1h
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import ProductCard from '@/components/server/ProductCard'
-import { getDeals } from '@/lib/data'
+import { getDeals, GAME_SYSTEM_MAP } from '@/lib/data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 
 export const revalidate = 3600
 
@@ -47,8 +50,29 @@ export default async function DealsPage({
     ? '7-Day Price Drops'
     : 'Best Deals'
 
+  // ItemList JSON-LD for deal listings
+  const itemListSchema = deals.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: title,
+    numberOfItems: deals.length,
+    itemListElement: deals.slice(0, 48).map((deal, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `${SITE_URL}/product/${deal.slug}`,
+      name: deal.name,
+    })),
+  } : null
+  const schemaJson = itemListSchema
+    ? JSON.stringify(itemListSchema).replace(/</g, '\\u003c')
+    : null
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {schemaJson && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schemaJson }} />
+      )}
+
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-bone">{title}</h1>
         <p className="mt-1 text-sm text-bone-muted">
@@ -57,7 +81,7 @@ export default async function DealsPage({
       </div>
 
       {/* Window filter tabs */}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex flex-wrap gap-2">
         {[
           { label: 'All Deals', href: '/deals' },
           { label: 'Last 24h', href: '/deals?window=24h' },
@@ -68,7 +92,7 @@ export default async function DealsPage({
             (tab.href.includes('24h') && window === '24h') ||
             (tab.href.includes('7d') && window === '7d')
           return (
-            <a
+            <Link
               key={tab.href}
               href={tab.href}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
@@ -78,9 +102,22 @@ export default async function DealsPage({
               }`}
             >
               {tab.label}
-            </a>
+            </Link>
           )
         })}
+      </div>
+
+      {/* Game system filter links */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {Object.entries(GAME_SYSTEM_MAP).map(([slug, name]) => (
+          <Link
+            key={slug}
+            href={`/deals/${slug}`}
+            className="rounded-full border border-ink-rim bg-ink-card px-3 py-1 text-sm text-bone-muted transition-all hover:border-gold/30 hover:bg-ink-raised hover:text-gold"
+          >
+            {name}
+          </Link>
+        ))}
       </div>
 
       {deals.length === 0 ? (

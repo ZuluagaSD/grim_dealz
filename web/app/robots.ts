@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/go/', '/api/', '/admin/'],
+        disallow: ['/go/', '/api/', '/admin/', '/search'],
       },
     ],
     sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'}/sitemap.xml`,

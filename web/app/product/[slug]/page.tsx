@@ -4,7 +4,9 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import PriceComparisonTable from '@/components/server/PriceComparisonTable'
 import PriceHistoryChart from '@/components/client/PriceHistoryChart'
-import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams } from '@/lib/data'
+import ProductCard from '@/components/server/ProductCard'
+import Link from 'next/link'
+import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams, getRelatedProducts, GAME_SYSTEM_SLUG_MAP } from '@/lib/data'
 import type { ProductWithListings, SerializedListing } from '@/lib/types'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
@@ -17,6 +19,7 @@ function buildProductSchema(
   const lowPrice = prices.length > 0 ? Math.min(...prices) : Number(product.gwRrpUsd)
   const highPrice = prices.length > 0 ? Math.max(...prices) : Number(product.gwRrpUsd)
   const factionSlug = product.faction.toLowerCase().replace(/\s+/g, '-')
+  const gameSystemSlug = GAME_SYSTEM_SLUG_MAP[product.gameSystem] ?? ''
 
   return {
     '@context': 'https://schema.org',
@@ -25,8 +28,11 @@ function buildProductSchema(
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-          { '@type': 'ListItem', position: 2, name: product.faction, item: `${SITE_URL}/faction/${factionSlug}` },
-          { '@type': 'ListItem', position: 3, name: product.name, item: `${SITE_URL}/product/${product.slug}` },
+          ...(gameSystemSlug
+            ? [{ '@type': 'ListItem', position: 2, name: product.gameSystem, item: `${SITE_URL}/game/${gameSystemSlug}` }]
+            : []),
+          { '@type': 'ListItem', position: gameSystemSlug ? 3 : 2, name: product.faction, item: `${SITE_URL}/faction/${factionSlug}` },
+          { '@type': 'ListItem', position: gameSystemSlug ? 4 : 3, name: product.name, item: `${SITE_URL}/product/${product.slug}` },
         ],
       },
       {
@@ -54,7 +60,8 @@ function buildProductSchema(
             )
               .toISOString()
               .split('T')[0],
-            url: `${SITE_URL}/go/${l.storeSlug}/${l.id}`,
+            // Use the retailer's direct URL — avoids Google crawling /go/ redirects
+            url: l.storeProductUrl ?? `${SITE_URL}/product/${product.slug}`,
             seller: { '@type': 'Organization', name: l.storeName },
           })),
         },
@@ -83,12 +90,17 @@ export async function generateMetadata({
     ? `Buy ${product.name} from $${Number(cheapest.currentPrice).toFixed(2)} — ${Math.round(Number(cheapest.discountPct))}% off GW RRP. Compare 10+ authorized US retailers.`
     : `Compare prices for ${product.name} across 10+ authorized US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`
 
+  const hasListings = product.listings.length > 0
+
   return {
     title: `${product.name} — Best Price`,
     description: desc,
     alternates: {
       canonical: `/product/${product.slug}`,
     },
+    // noindex product pages with no retailer listings — thin content.
+    // Once scrapers add listings, next ISR revalidation removes the tag.
+    ...(!hasListings && { robots: { index: false, follow: true } }),
   }
 }
 
@@ -107,6 +119,11 @@ export default async function ProductPage({
     notFound()
   }
 
+  const factionSlug = product.faction.toLowerCase().replace(/\s+/g, '-')
+  const gameSystemSlug = GAME_SYSTEM_SLUG_MAP[product.gameSystem] ?? ''
+
+  const relatedProducts = await getRelatedProducts(factionSlug, params.slug, 8)
+
   const cheapest = listings[0]
   const savings = cheapest
     ? Number(product.gwRrpUsd) - cheapest.currentPrice
@@ -120,14 +137,22 @@ export default async function ProductPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: schemaJson }} />
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1.5 text-sm text-bone-faint">
-        <a href="/" className="transition-colors hover:text-gold">Home</a>
+        <Link href="/" className="transition-colors hover:text-gold">Home</Link>
+        {gameSystemSlug && (
+          <>
+            <span>/</span>
+            <Link href={`/game/${gameSystemSlug}`} className="transition-colors hover:text-gold">
+              {product.gameSystem}
+            </Link>
+          </>
+        )}
         <span>/</span>
-        <a
-          href={`/faction/${product.faction.toLowerCase().replace(/\s+/g, '-')}`}
+        <Link
+          href={`/faction/${factionSlug}`}
           className="transition-colors hover:text-gold"
         >
           {product.faction}
-        </a>
+        </Link>
         <span>/</span>
         <span className="text-bone-muted">{product.name}</span>
       </nav>
@@ -220,6 +245,26 @@ export default async function ProductPage({
         <h2 className="mb-4 text-xl font-bold text-bone">Price History</h2>
         <PriceHistoryChart points={priceHistory} gwRrpUsd={Number(product.gwRrpUsd)} />
       </div>
+
+      {/* Related Products */}
+      {relatedProducts.length > 0 && (
+        <div className="mt-10">
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-xl font-bold text-bone">More {product.faction} Products</h2>
+            <Link
+              href={`/faction/${factionSlug}`}
+              className="text-sm text-gold transition-colors hover:text-gold-light"
+            >
+              View all →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {relatedProducts.map((related) => (
+              <ProductCard key={related.slug} product={related} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
