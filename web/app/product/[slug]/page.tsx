@@ -54,7 +54,7 @@ function buildProductSchema(
             )
               .toISOString()
               .split('T')[0],
-            url: `${SITE_URL}/go/${l.storeSlug}/${l.id}`,
+            url: `${SITE_URL}/product/${product.slug}`,
             seller: { '@type': 'Organization', name: l.storeName },
           })),
         },

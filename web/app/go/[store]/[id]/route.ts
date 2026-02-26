@@ -33,7 +33,10 @@ export async function GET(
   if (!listing) {
     return NextResponse.redirect(
       new URL('/', request.nextUrl.origin),
-      { status: 302 }
+      {
+        status: 302,
+        headers: { 'X-Robots-Tag': 'noindex, nofollow' },
+      }
     )
   }
 
@@ -52,6 +55,7 @@ export async function GET(
       headers: {
         'Referrer-Policy': 'no-referrer',
         'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex, nofollow',
       },
     }
   )

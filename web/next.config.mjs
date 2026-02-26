@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  trailingSlash: false,
   images: {
     remotePatterns: [
       {
@@ -11,6 +12,16 @@ const nextConfig = {
         hostname: '**.warhammer.com',
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/go/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
+    ]
   },
 }
 
