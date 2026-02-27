@@ -1,5 +1,20 @@
 import type { Prisma } from '@prisma/client'
 
+// Currency symbol map — add new currencies here as stores expand
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  GBP: '£',
+  EUR: '€',
+  CAD: 'CA$',
+  AUD: 'A$',
+}
+
+/** Format a price with the correct currency symbol, e.g. "$29.99" or "£24.50". */
+export function formatPrice(amount: number, currency = 'USD'): string {
+  const symbol = CURRENCY_SYMBOLS[currency] ?? '$'
+  return `${symbol}${amount.toFixed(2)}`
+}
+
 // Exact shape returned by getProduct
 export type ProductWithListings = Prisma.ProductGetPayload<{
   include: {
@@ -27,6 +42,8 @@ export type SerializedListing = {
   id: string
   storeSlug: string
   storeName: string
+  storeRegion: string // 'US' | 'UK'
+  currency: string // 'USD' | 'GBP'
   currentPrice: number // Prisma.Decimal.toNumber()
   discountPct: number
   inStock: boolean
@@ -48,6 +65,7 @@ export type ProductCardData = {
     discountPct: number
     storeName: string
     storeSlug: string
+    currency: string // 'USD' | 'GBP'
     listingId: string
     inStock: boolean
     lastCheckedAt: string
