@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { SerializedListing } from '@/lib/types'
+import { formatPrice } from '@/lib/types'
 
 interface PriceComparisonTableProps {
   listings: SerializedListing[]
@@ -62,11 +63,16 @@ export default function PriceComparisonTable({
                   <span className="text-sm font-medium text-bone">
                     {listing.storeName}
                   </span>
+                  {listing.storeRegion !== 'US' && (
+                    <span className="rounded bg-ink-raised px-1.5 py-0.5 text-[10px] font-medium text-bone-faint">
+                      {listing.currency}
+                    </span>
+                  )}
                 </div>
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-right">
                 <span className={`text-sm font-bold ${idx === 0 ? 'text-green-400' : 'text-bone'}`}>
-                  ${listing.currentPrice.toFixed(2)}
+                  {formatPrice(listing.currentPrice, listing.currency)}
                 </span>
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-right">

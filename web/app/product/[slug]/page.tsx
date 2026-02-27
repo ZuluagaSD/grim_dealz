@@ -8,6 +8,7 @@ import ProductCard from '@/components/server/ProductCard'
 import Link from 'next/link'
 import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams, getRelatedProducts, GAME_SYSTEM_SLUG_MAP } from '@/lib/data'
 import type { ProductWithListings, SerializedListing } from '@/lib/types'
+import { formatPrice } from '@/lib/types'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 
@@ -51,7 +52,7 @@ function buildProductSchema(
           offers: listings.map((l) => ({
             '@type': 'Offer',
             price: l.currentPrice.toFixed(2),
-            priceCurrency: 'USD',
+            priceCurrency: l.currency ?? 'USD',
             availability: l.inStock
               ? 'https://schema.org/InStock'
               : 'https://schema.org/OutOfStock',
@@ -86,9 +87,10 @@ export async function generateMetadata({
   if (!product) return {}
 
   const cheapest = product.listings[0]
+  const cheapestPrice = cheapest ? formatPrice(Number(cheapest.currentPrice), cheapest.store.currency) : null
   const desc = cheapest
-    ? `Buy ${product.name} from $${Number(cheapest.currentPrice).toFixed(2)} — ${Math.round(Number(cheapest.discountPct))}% off GW RRP. Compare 10+ authorized US retailers.`
-    : `Compare prices for ${product.name} across 10+ authorized US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`
+    ? `Buy ${product.name} from ${cheapestPrice} — ${Math.round(Number(cheapest.discountPct))}% off GW RRP. Compare authorized US & UK retailers.`
+    : `Compare prices for ${product.name} across authorized US & UK Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`
 
   const hasListings = product.listings.length > 0
 
@@ -125,7 +127,9 @@ export default async function ProductPage({
   const relatedProducts = await getRelatedProducts(factionSlug, params.slug, 8)
 
   const cheapest = listings[0]
-  const savings = cheapest
+  const cheapestCurrency = cheapest?.currency ?? 'USD'
+  const isSameCurrency = cheapestCurrency === 'USD'
+  const savings = cheapest && isSameCurrency
     ? Number(product.gwRrpUsd) - cheapest.currentPrice
     : 0
 
@@ -189,7 +193,7 @@ export default async function ProductPage({
             {cheapest ? (
               <>
                 <span className="text-4xl font-bold text-bone">
-                  ${cheapest.currentPrice.toFixed(2)}
+                  {formatPrice(cheapest.currentPrice, cheapestCurrency)}
                 </span>
                 <span className="text-lg text-bone-faint line-through">
                   ${Number(product.gwRrpUsd).toFixed(2)} RRP
