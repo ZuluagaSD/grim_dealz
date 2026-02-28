@@ -8,6 +8,7 @@ import ProductCard from '@/components/server/ProductCard'
 import Link from 'next/link'
 import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams, getRelatedProducts, GAME_SYSTEM_SLUG_MAP } from '@/lib/data'
 import type { ProductWithListings, SerializedListing } from '@/lib/types'
+import { formatPrice } from '@/lib/format'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 
@@ -189,7 +190,7 @@ export default async function ProductPage({
             {cheapest ? (
               <>
                 <span className="text-4xl font-bold text-bone">
-                  ${cheapest.currentPrice.toFixed(2)}
+                  {formatPrice(cheapest.currentPrice, cheapest.currency)}
                 </span>
                 <span className="text-lg text-bone-faint line-through">
                   ${Number(product.gwRrpUsd).toFixed(2)} RRP
