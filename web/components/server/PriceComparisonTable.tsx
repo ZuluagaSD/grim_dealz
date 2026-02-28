@@ -71,7 +71,7 @@ export default function PriceComparisonTable({
                 </span>
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-right">
-                {listing.discountPct > 0 ? (
+                {listing.currency === 'USD' && listing.discountPct > 0 ? (
                   <span className="text-sm font-medium text-green-400">
                     -{Math.round(listing.discountPct)}%
                   </span>

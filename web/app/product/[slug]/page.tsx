@@ -192,13 +192,17 @@ export default async function ProductPage({
                 <span className="text-4xl font-bold text-bone">
                   {formatPrice(cheapest.currentPrice, cheapest.currency)}
                 </span>
-                <span className="text-lg text-bone-faint line-through">
-                  ${Number(product.gwRrpUsd).toFixed(2)} RRP
-                </span>
-                {savings > 0 && (
-                  <span className="rounded bg-green-900/40 px-2 py-0.5 text-sm font-bold text-green-400">
-                    Save ${savings.toFixed(2)}
-                  </span>
+                {cheapest.currency === 'USD' && (
+                  <>
+                    <span className="text-lg text-bone-faint line-through">
+                      ${Number(product.gwRrpUsd).toFixed(2)} RRP
+                    </span>
+                    {savings > 0 && (
+                      <span className="rounded bg-green-900/40 px-2 py-0.5 text-sm font-bold text-green-400">
+                        Save ${savings.toFixed(2)}
+                      </span>
+                    )}
+                  </>
                 )}
               </>
             ) : (

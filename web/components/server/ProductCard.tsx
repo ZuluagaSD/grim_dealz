@@ -68,8 +68,8 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* Discount badge */}
-        {cheapestListing && cheapestListing.discountPct >= 5 && (
+        {/* Discount badge - only show for USD stores (can't compare to USD RRP otherwise) */}
+        {cheapestListing && cheapestListing.currency === 'USD' && cheapestListing.discountPct >= 5 && (
           <div className="absolute left-2 top-2 rounded bg-red-500/90 px-2 py-0.5 text-xs font-bold text-white">
             {Math.round(cheapestListing.discountPct)}% OFF
           </div>
@@ -106,7 +106,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 <span className="text-lg font-bold text-bone">
                   {formatPrice(cheapestListing.currentPrice, cheapestListing.currency)}
                 </span>
-                {cheapestListing.discountPct > 0 && (
+                {cheapestListing.currency === 'USD' && cheapestListing.discountPct > 0 && (
                   <span className="ml-1 text-xs text-bone-faint line-through">
                     ${product.gwRrpUsd.toFixed(2)}
                   </span>
