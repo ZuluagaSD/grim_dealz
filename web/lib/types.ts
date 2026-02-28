@@ -34,6 +34,7 @@ export type SerializedListing = {
   affiliateUrl: string | null
   storeProductUrl: string | null
   lastCheckedAt: string // ISO string — Date serialized for Client Components
+  currency: string // USD, GBP, EUR
 }
 
 // What ProductCard actually receives — pre-computed, not raw Prisma
@@ -52,6 +53,7 @@ export type ProductCardData = {
     inStock: boolean
     lastCheckedAt: string
     isAllTimeLow: boolean // computed in query layer, not component
+    currency: string // USD, GBP, EUR
   } | null
 }
 

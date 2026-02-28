@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import type { ProductCardData } from '@/lib/types'
+import { formatPrice } from '@/lib/format'
 
 interface ProductCardProps {
   product: ProductCardData
@@ -103,7 +104,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             <div className="flex items-baseline justify-between">
               <div>
                 <span className="text-lg font-bold text-bone">
-                  ${cheapestListing.currentPrice.toFixed(2)}
+                  {formatPrice(cheapestListing.currentPrice, cheapestListing.currency)}
                 </span>
                 {cheapestListing.discountPct > 0 && (
                   <span className="ml-1 text-xs text-bone-faint line-through">

@@ -61,6 +61,7 @@ function serializeListing(
     affiliateUrl: listing.affiliateUrl,
     storeProductUrl: listing.storeProductUrl,
     lastCheckedAt: toIso(listing.lastCheckedAt),
+    currency: listing.store.currency ?? 'USD',
   }
 }
 
@@ -85,6 +86,7 @@ function productToCardData(
           inStock: cheapest.inStock,
           lastCheckedAt: toIso(cheapest.lastCheckedAt),
           isAllTimeLow,
+          currency: cheapest.store.currency ?? 'USD',
         }
       : null,
   }

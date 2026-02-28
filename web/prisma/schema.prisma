@@ -73,6 +73,7 @@ model Store {
   name                String
   baseUrl             String   @map("base_url")
   region              String   @default("US")
+  currency            String   @default("USD")  // USD, GBP, EUR
   affiliateTag        String?  @map("affiliate_tag")
   affiliateNetwork    String?  @map("affiliate_network") // shareasale | impact | awin | direct | amazon
   commissionPct       Decimal? @map("commission_pct") @db.Decimal(4, 2)
