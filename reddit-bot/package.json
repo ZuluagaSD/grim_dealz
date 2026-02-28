@@ -1,0 +1,23 @@
+{
+  "name": "grimdealz-reddit-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "start:once": "tsx src/index.ts --once",
+    "generate": "prisma generate --schema=../web/prisma/schema.prisma"
+  },
+  "prisma": {
+    "schema": "../web/prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@prisma/client": "^5.22.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}
