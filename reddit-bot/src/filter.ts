@@ -48,7 +48,9 @@ export function passesKeywordFilter(item: RedditItem): boolean {
     return false
   }
 
-  const text = item.title ? `${item.title} ${item.body}` : item.body
+  // TEMP: bypass keyword filter, send everything to Haiku
+  return true
 
-  return PURCHASE_INTENT_PATTERNS.some((pattern) => pattern.test(text))
+  // const text = item.title ? `${item.title} ${item.body}` : item.body
+  // return PURCHASE_INTENT_PATTERNS.some((pattern) => pattern.test(text))
 }
