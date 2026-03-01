@@ -24,6 +24,13 @@ function logError(msg: string): void {
 
 // ── Pipeline ────────────────────────────────────────────────
 
+interface SubredditStats {
+  posts: number
+  comments: number
+  filtered: number
+  matches: number
+}
+
 async function processSubreddit(
   subreddit: string,
   state: BotState,
@@ -32,7 +39,8 @@ async function processSubreddit(
   matcher: ProductMatcher,
   telegram: TelegramNotifier,
   config: BotConfig
-): Promise<void> {
+): Promise<SubredditStats> {
+  const stats: SubredditStats = { posts: 0, comments: 0, filtered: 0, matches: 0 }
   const subState = getSubredditState(state, subreddit)
 
   // Fetch latest posts and comments
@@ -45,6 +53,9 @@ async function processSubreddit(
   const newPosts = filterNewItems(posts, subState.lastPostFullname)
   const newComments = filterNewItems(comments, subState.lastCommentFullname)
 
+  stats.posts = newPosts.length
+  stats.comments = newComments.length
+
   log(
     `  r/${subreddit}: ${newPosts.length} new posts, ${newComments.length} new comments`
   )
@@ -52,6 +63,7 @@ async function processSubreddit(
   // Merge and apply keyword pre-filter
   const allNew: RedditItem[] = [...newPosts, ...newComments]
   const filtered = allNew.filter(passesKeywordFilter)
+  stats.filtered = filtered.length
 
   if (filtered.length > 0) {
     log(`  r/${subreddit}: ${filtered.length} passed keyword filter`)
@@ -71,6 +83,7 @@ async function processSubreddit(
         const match: MatchResult = { redditItem: item, intent, product }
 
         await telegram.sendMatch(match)
+        stats.matches++
 
         const productInfo = product
           ? ` → ${product.productName}`
@@ -87,6 +100,8 @@ async function processSubreddit(
   const newestPost = posts[0]?.fullname ?? null
   const newestComment = comments[0]?.fullname ?? null
   updateSubredditState(state, subreddit, newestPost, newestComment)
+
+  return stats
 }
 
 async function runCheck(
@@ -99,9 +114,14 @@ async function runCheck(
   log("Starting check...")
   const state = await loadState(config.stateFilePath)
 
+  let totalPosts = 0
+  let totalComments = 0
+  let totalFiltered = 0
+  let totalMatches = 0
+
   for (const subreddit of config.subreddits) {
     try {
-      await processSubreddit(
+      const stats = await processSubreddit(
         subreddit,
         state,
         reddit,
@@ -110,6 +130,10 @@ async function runCheck(
         telegram,
         config
       )
+      totalPosts += stats.posts
+      totalComments += stats.comments
+      totalFiltered += stats.filtered
+      totalMatches += stats.matches
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       logError(`Failed to process r/${subreddit}: ${msg}`)
@@ -117,6 +141,16 @@ async function runCheck(
   }
 
   await saveState(config.stateFilePath, state)
+  
+  // Send summary notification
+  await telegram.sendSummary({
+    subreddits: config.subreddits,
+    totalPosts,
+    totalComments,
+    filtered: totalFiltered,
+    matches: totalMatches,
+  })
+
   log("Check complete.")
 }
 

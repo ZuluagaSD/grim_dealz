@@ -71,6 +71,28 @@ export class TelegramNotifier {
     await this.sendMessage(`\u274C <b>Reddit Bot Error</b>\n\n${escapeHtml(message)}`)
   }
 
+  async sendSummary(stats: {
+    subreddits: string[]
+    totalPosts: number
+    totalComments: number
+    filtered: number
+    matches: number
+  }): Promise<void> {
+    const emoji = stats.matches > 0 ? "\u{1F514}" : "\u{1F4CA}"
+    const lines: string[] = [
+      `${emoji} <b>Reddit Bot Check Complete</b>`,
+      "",
+      `\u{1F4C1} Subreddits: ${stats.subreddits.join(", ")}`,
+      `\u{1F4DD} New posts: ${stats.totalPosts}`,
+      `\u{1F4AC} New comments: ${stats.totalComments}`,
+      `\u{1F50D} Passed keyword filter: ${stats.filtered}`,
+      `\u{1F3AF} Purchase intent matches: ${stats.matches}`,
+      "",
+      `\u{1F551} ${new Date().toLocaleString("en-US", { timeZone: "America/Bogota" })}`,
+    ]
+    await this.sendMessage(lines.join("\n"))
+  }
+
   private async sendMessage(text: string): Promise<void> {
     const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`
 
