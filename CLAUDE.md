@@ -1,22 +1,27 @@
 # GrimDealz — CLAUDE.md
 
 Warhammer price comparison site. Next.js 14 frontend + Supabase PostgreSQL.
-Scrapers live in the separate `dagster` repo (Dagster on Raspberry Pi, every 4h).
+Scrapers live in `scrapers/grim_dealz/` (Dagster on Raspberry Pi, every 4h).
 
 ## Stack
 
 - **Frontend:** Next.js 14 App Router + Tailwind CSS → Vercel
 - **DB:** PostgreSQL via Supabase + Prisma ORM
-- **Scrapers:** Dagster repo (`~/Git/Personal/dagster`) — runs on `zulu-pi`, schedule every 4h
+- **Scrapers:** `scrapers/grim_dealz/` (Dagster + httpx + bs4) — runs on `zulu-pi`, schedule every 4h
 - **Package manager:** `npm` (web/)
 
 ## Project Structure
 
 ```
 grim_dealz/
-├── web/            # Next.js 14 app (App Router)
-├── shared/schemas/ # JSON Schema contracts between Python and TypeScript
-└── docs/plans/     # Feature plans
+├── web/                        # Next.js 14 app (App Router)
+├── scrapers/grim_dealz/        # Dagster scraper package (Python)
+│   ├── grim_dealz/             # Package: assets, jobs, stores
+│   ├── pyproject.toml          # Python deps
+│   └── test_scrapers.py
+├── reddit-bot/                 # Reddit purchase-intent monitor
+├── shared/schemas/             # JSON Schema contracts (Python ↔ TypeScript)
+└── docs/plans/                 # Feature plans
 ```
 
 ## Critical Patterns
@@ -112,17 +117,17 @@ No PII stored in `click_events`. Plausible/Umami handles geo + device analytics.
 
 ### Stock Status Normalization
 
-Raw retailer strings → canonical enum values. Normalization happens in the `dagster` repo (`scrapers/grim_dealz/grim_dealz/base_store.py`).
+Raw retailer strings → canonical enum values. Normalization happens in `scrapers/grim_dealz/grim_dealz/base_store.py`.
 
 Canonical values (must match Prisma `StockStatus` enum): `in_stock`, `out_of_stock`, `backorder`, `pre_order`, `limited`.
 
 ### Price History — Write on Change Only
 
-Only `price_history` rows are written when `current_price` OR `stock_status` changes — not every scrape. This keeps row count ~50-100K/year instead of ~120K/day. Logic lives in the `dagster` repo (`db.py`).
+Only `price_history` rows are written when `current_price` OR `stock_status` changes — not every scrape. This keeps row count ~50-100K/year instead of ~120K/day. Logic lives in `scrapers/grim_dealz/grim_dealz/db.py`.
 
 ### discount_pct — Computed, Not Stored on Listing
 
-`products.gw_rrp_usd` is the single source of truth. `discount_pct` is computed during upsert in the `dagster` repo:
+`products.gw_rrp_usd` is the single source of truth. `discount_pct` is computed during upsert in `scrapers/grim_dealz/grim_dealz/db.py`:
 
 ```
 discount_pct = (gw_rrp_usd - current_price) / gw_rrp_usd * 100
@@ -147,7 +152,7 @@ Never store `gw_rrp_usd` on `listings`.
 
 ## Adding a New Store
 
-1. Add the store scraper in the `dagster` repo (`scrapers/grim_dealz/grim_dealz/stores/<store_slug>.py`)
+1. Add the store scraper in `scrapers/grim_dealz/grim_dealz/stores/<store_slug>.py`
 2. Set `store_slug` to match `stores.slug` in DB
 3. Add asset + wire into `revalidate_cache` deps in `assets.py`
 4. Update the store's `is_active = True` in `web/prisma/seed.ts` + re-run seed
@@ -155,12 +160,13 @@ Never store `gw_rrp_usd` on `listings`.
 
 ## Deploying Scrapers
 
-Scrapers are managed in the `dagster` repo. To deploy changes:
+Scraper **code** lives here in `scrapers/grim_dealz/`. Deployment configs (Dockerfile, docker-compose.yml, workspace.yaml) live in the separate `dagster` repo (`~/Git/Personal/dagster`).
+
 ```bash
 cd ~/Git/Personal/dagster
-git pull origin master
-ssh zulu-pi "cd ~/dagster && docker compose build && docker compose up -d"
+make deploy   # rsync configs + scrapers → zulu-pi, then docker compose build + up
 ```
+
 Dagster UI: `http://zulu-pi:3000`
 SSH config: `Host zulu-pi → 192.168.0.106, user zulu, key ~/.ssh/id_ed25519`
 
@@ -177,6 +183,11 @@ npm run dev
 # Seed stores
 cd web
 npm run db:seed
+
+# Scrapers (requires Python 3.11+)
+cd scrapers/grim_dealz
+pip install -e ".[dev]"
+dagster dev   # opens Dagster UI at localhost:3000
 ```
 
 ## ISR Revalidation Times

@@ -25,6 +25,10 @@ dist/
 .ruff_cache/
 .mypy_cache/
 
+# Dagster
+.dagster/
+dagster_home/
+
 # Prisma
 web/prisma/migrations/dev.db
 web/prisma/*.db
