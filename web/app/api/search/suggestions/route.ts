@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export type Suggestion = {
   name: string
   slug: string
-  faction: string
+  faction: string | null
 }
 
 export async function GET(request: Request) {

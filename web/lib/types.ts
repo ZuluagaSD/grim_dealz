@@ -59,7 +59,7 @@ export type ProductCardData = {
 
 // For the deals page — product with its cheapest listing
 export type DealItem = ProductCardData & {
-  gameSystem: string
+  gameSystem: string | null
   productType: string
 }
 
@@ -74,7 +74,7 @@ export type SerializedPricePoint = {
 // For faction page — faction summary
 export type FactionSummary = {
   faction: string
-  gameSystem: string
+  gameSystem: string | null
   slug: string // faction slug for /faction/[slug] route
   productCount: number
   cheapestDiscount: number // highest discount_pct available

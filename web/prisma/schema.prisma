@@ -53,7 +53,7 @@ model Product {
   gwCatalogCode  String?     @unique @map("gw_catalog_code")  // retailer-facing XX-XX code (e.g. "48-75")
   gwUrl          String?     @map("gw_url")                  // warhammer.com product page URL
   faction        String?
-  gameSystem    String      @map("game_system")
+  gameSystem    String?     @map("game_system")
   category      String
   productType   ProductType @default(standard) @map("product_type")
   gwRrpUsd      Decimal     @map("gw_rrp_usd") @db.Decimal(10, 2)

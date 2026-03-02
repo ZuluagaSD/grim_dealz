@@ -287,7 +287,7 @@ export const searchProducts = async (
     slug: string
     name: string
     faction: string | null
-    game_system: string
+    game_system: string | null
     product_type: string
     gw_rrp_usd: string
     image_url: string | null
@@ -298,10 +298,10 @@ export const searchProducts = async (
            p.gw_rrp_usd, p.image_url
     FROM products p
     WHERE p.is_active = TRUE
-      AND to_tsvector('english', p.name || ' ' || p.faction || ' ' || p.game_system)
+      AND to_tsvector('english', p.name || ' ' || COALESCE(p.faction, '') || ' ' || COALESCE(p.game_system, ''))
           @@ plainto_tsquery('english', ${query})
     ORDER BY ts_rank(
-      to_tsvector('english', p.name || ' ' || p.faction || ' ' || p.game_system),
+      to_tsvector('english', p.name || ' ' || COALESCE(p.faction, '') || ' ' || COALESCE(p.game_system, '')),
       plainto_tsquery('english', ${query})
     ) DESC
     LIMIT ${limit}

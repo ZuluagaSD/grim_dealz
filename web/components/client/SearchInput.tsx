@@ -146,7 +146,7 @@ export default function SearchInput({ defaultValue = '' }: SearchInputProps) {
                 }`}
               >
                 <span className="truncate text-sm font-medium">{s.name}</span>
-                <span className="ml-4 shrink-0 text-xs text-bone-faint">{s.faction}</span>
+                {s.faction && <span className="ml-4 shrink-0 text-xs text-bone-faint">{s.faction}</span>}
               </button>
             </li>
           ))}

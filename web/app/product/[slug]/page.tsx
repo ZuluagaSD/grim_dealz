@@ -20,7 +20,7 @@ function buildProductSchema(
   const lowPrice = prices.length > 0 ? Math.min(...prices) : Number(product.gwRrpUsd)
   const highPrice = prices.length > 0 ? Math.max(...prices) : Number(product.gwRrpUsd)
   const factionSlug = product.faction?.toLowerCase().replace(/\s+/g, '-') ?? ''
-  const gameSystemSlug = GAME_SYSTEM_SLUG_MAP[product.gameSystem] ?? ''
+  const gameSystemSlug = (product.gameSystem && GAME_SYSTEM_SLUG_MAP[product.gameSystem]) ?? ''
 
   return {
     '@context': 'https://schema.org',
@@ -123,7 +123,7 @@ export default async function ProductPage({
   }
 
   const factionSlug = product.faction?.toLowerCase().replace(/\s+/g, '-') ?? ''
-  const gameSystemSlug = GAME_SYSTEM_SLUG_MAP[product.gameSystem] ?? ''
+  const gameSystemSlug = (product.gameSystem && GAME_SYSTEM_SLUG_MAP[product.gameSystem]) ?? ''
 
   const relatedProducts = await getRelatedProducts(factionSlug, params.slug, 8)
 

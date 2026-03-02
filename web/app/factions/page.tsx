@@ -25,9 +25,10 @@ const GAME_SYSTEM_ORDER = [
 function groupByGameSystem(factions: FactionSummary[]): Map<string, FactionSummary[]> {
   const map = new Map<string, FactionSummary[]>()
   for (const f of factions) {
-    const existing = map.get(f.gameSystem) ?? []
+    const key = f.gameSystem ?? 'Other'
+    const existing = map.get(key) ?? []
     existing.push(f)
-    map.set(f.gameSystem, existing)
+    map.set(key, existing)
   }
   return map
 }
