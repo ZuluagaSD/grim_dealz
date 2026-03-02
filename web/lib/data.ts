@@ -376,10 +376,11 @@ export const getFactions = cache(
         _count: { _all: true },
       })
       return groups
+        .filter((g) => g.faction !== null)
         .map((g) => ({
-          faction: g.faction,
+          faction: g.faction!,
           gameSystem: g.gameSystem,
-          slug: g.faction.toLowerCase().replace(/\s+/g, '-'),
+          slug: g.faction!.toLowerCase().replace(/\s+/g, '-'),
           productCount: g._count._all,
           cheapestDiscount: 0,
         }))
