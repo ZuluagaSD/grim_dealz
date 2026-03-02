@@ -66,7 +66,7 @@ def _parse_item_number(mpn: str) -> str | None:
     mpn = mpn.strip().upper()
     if mpn.startswith("GAW"):
         candidate = mpn[3:]  # strip "GAW"
-        if re.fullmatch(r"\d{2}-\d{2}", candidate):
+        if re.fullmatch(r"\d{2,3}-\d{2,3}(-\d{2})?", candidate):
             return candidate
     return None
 

@@ -47,7 +47,7 @@ def _extract_item_number(url: str) -> str | None:
 
     "https://www.miniaturemarket.com/gw-48-75.html" → "48-75"
     """
-    m = re.search(r"/gw-(\d{2}-\d{2})\.html", url)
+    m = re.search(r"/gw-(\d{2,3}-\d{2,3})\.html", url)
     return m.group(1) if m else None
 
 
@@ -128,7 +128,7 @@ class MiniatureMarketScraper(BaseStore):
         urls = [
             elem.text
             for elem in sitemap_root.findall(f".//{{{_SITEMAP_NS}}}loc")
-            if elem.text and re.search(r"/gw-\d{2}-\d{2}\.html$", elem.text)
+            if elem.text and re.search(r"/gw-\d{2,3}-\d{2,3}\.html$", elem.text)
         ]
         logger.info("[miniature-market] %d GW product URLs in sitemap", len(urls))
         return urls

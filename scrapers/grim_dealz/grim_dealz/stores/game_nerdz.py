@@ -37,7 +37,7 @@ _CONCURRENCY = 8  # reduced from 10 to ease memory pressure
 _SLEEP = 0.25  # between product page fetches per semaphore slot
 _SITEMAP_SLEEP = 0.3  # between sitemap page fetches
 
-_GW_MPN_RE = re.compile(r"^\d{2}-\d{2}$")
+_GW_MPN_RE = re.compile(r"^\d{2,3}-\d{2,3}(-\d{2})?$")
 _SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
 _BATCH_SIZE = 20  # reduced from 50 to ease memory/DB pressure
 

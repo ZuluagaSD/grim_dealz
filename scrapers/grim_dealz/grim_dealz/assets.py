@@ -23,6 +23,7 @@ from dagster import asset
 
 from .catalog_db import sync_gw_catalog
 from .db import stream_upsert
+from .enrich_catalog_codes import enrich_catalog_codes
 from .stores.discount_games_inc import DiscountGamesIncScraper
 from .stores.element_games import ElementGamesScraper
 from .stores.frontline_gaming import FrontlineGamingScraper
@@ -68,6 +69,29 @@ def gw_product_catalog(context) -> dict:
 
 
 @asset(group_name="grim_dealz", deps=[gw_product_catalog])
+def enrich_catalog_codes_asset(context) -> dict:
+    """Populate products.gw_catalog_code via name-matching against MM and DGI."""
+    dsn = os.environ["DIRECT_URL"]
+    stats = _run_async(enrich_catalog_codes(dsn, log=context.log))
+    context.add_output_metadata({
+        "products_needing_codes": stats.products_needing_codes,
+        "mm_matched": stats.mm_matched,
+        "mm_attempted": stats.mm_attempted,
+        "dgi_matched": stats.dgi_matched,
+        "dgi_attempted": stats.dgi_attempted,
+        "total_populated": stats.total_populated,
+    })
+    return {
+        "products_needing_codes": stats.products_needing_codes,
+        "mm_matched": stats.mm_matched,
+        "mm_attempted": stats.mm_attempted,
+        "dgi_matched": stats.dgi_matched,
+        "dgi_attempted": stats.dgi_attempted,
+        "total_populated": stats.total_populated,
+    }
+
+
+@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
 def miniature_market_listings(context) -> dict:
     """Scrape and upsert GW prices from Miniature Market."""
     async def _run():
@@ -92,7 +116,7 @@ def miniature_market_listings(context) -> dict:
     }
 
 
-@asset(group_name="grim_dealz", deps=[gw_product_catalog])
+@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
 def discount_games_inc_listings(context) -> dict:
     """Scrape and upsert GW prices from Discount Games Inc."""
     async def _run():
@@ -117,7 +141,7 @@ def discount_games_inc_listings(context) -> dict:
     }
 
 
-@asset(group_name="grim_dealz", deps=[gw_product_catalog])
+@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
 def frontline_gaming_listings(context) -> dict:
     """Scrape and upsert GW prices from Frontline Gaming."""
     async def _run():
@@ -142,7 +166,7 @@ def frontline_gaming_listings(context) -> dict:
     }
 
 
-@asset(group_name="grim_dealz", deps=[gw_product_catalog])
+@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
 def game_nerdz_listings(context) -> dict:
     """Scrape and upsert GW prices from GameNerdz."""
     async def _run():
@@ -167,7 +191,7 @@ def game_nerdz_listings(context) -> dict:
     }
 
 
-@asset(group_name="grim_dealz", deps=[gw_product_catalog])
+@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
 def element_games_listings(context) -> dict:
     """Scrape and upsert GW prices from Element Games (UK, GBP)."""
     async def _run():
@@ -192,7 +216,7 @@ def element_games_listings(context) -> dict:
     }
 
 
-@asset(group_name="grim_dealz", deps=[gw_product_catalog])
+@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
 def wayland_games_listings(context) -> dict:
     """Scrape and upsert GW prices from Wayland Games (UK, GBP)."""
     async def _run():

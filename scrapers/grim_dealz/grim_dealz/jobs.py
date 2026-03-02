@@ -9,6 +9,7 @@ scrape_job = define_asset_job(
     name="grim_dealz_scrape_job",
     selection=[
         "gw_product_catalog",
+        "enrich_catalog_codes_asset",
         "miniature_market_listings",
         "discount_games_inc_listings",
         "frontline_gaming_listings",
@@ -31,7 +32,7 @@ every_4h_schedule = ScheduleDefinition(
 # when the full scrape job isn't running or if you want more frequent catalog updates.
 catalog_job = define_asset_job(
     name="gw_catalog_sync_job",
-    selection=["gw_product_catalog"],
+    selection=["gw_product_catalog", "enrich_catalog_codes_asset"],
     description="Sync GW product catalog from Algolia.",
     executor_def=in_process_executor,
 )

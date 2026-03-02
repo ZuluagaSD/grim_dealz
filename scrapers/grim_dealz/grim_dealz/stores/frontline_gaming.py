@@ -35,7 +35,7 @@ _AFFILIATE_TAG = os.environ.get("AFFILIATE_FRONTLINE_GAMING")
 _CONCURRENCY = 10
 _SLEEP = 0.2
 
-_GW_SKU_RE = re.compile(r"^\d{2}-\d{2}$")
+_GW_SKU_RE = re.compile(r"^\d{2,3}-\d{2,3}(-\d{2})?$")
 
 
 def _stock_from_product(available: bool, tags: list[str]) -> StockStatus:
