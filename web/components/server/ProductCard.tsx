@@ -35,7 +35,7 @@ function getFactionColor(faction: string): string {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { cheapestListing } = product
-  const factionColor = getFactionColor(product.faction)
+  const factionColor = product.faction ? getFactionColor(product.faction) : undefined
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-lg border border-ink-rim bg-ink-card transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-high hover:shadow-lg hover:shadow-black/40">

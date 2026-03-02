@@ -41,7 +41,7 @@ export type SerializedListing = {
 export type ProductCardData = {
   slug: string
   name: string
-  faction: string
+  faction: string | null
   imageUrl: string | null
   gwRrpUsd: number
   cheapestListing: {

@@ -19,7 +19,7 @@ function buildProductSchema(
   const prices = listings.map((l) => l.currentPrice)
   const lowPrice = prices.length > 0 ? Math.min(...prices) : Number(product.gwRrpUsd)
   const highPrice = prices.length > 0 ? Math.max(...prices) : Number(product.gwRrpUsd)
-  const factionSlug = product.faction.toLowerCase().replace(/\s+/g, '-')
+  const factionSlug = product.faction?.toLowerCase().replace(/\s+/g, '-') ?? ''
   const gameSystemSlug = GAME_SYSTEM_SLUG_MAP[product.gameSystem] ?? ''
 
   return {
@@ -32,8 +32,10 @@ function buildProductSchema(
           ...(gameSystemSlug
             ? [{ '@type': 'ListItem', position: 2, name: product.gameSystem, item: `${SITE_URL}/game/${gameSystemSlug}` }]
             : []),
-          { '@type': 'ListItem', position: gameSystemSlug ? 3 : 2, name: product.faction, item: `${SITE_URL}/faction/${factionSlug}` },
-          { '@type': 'ListItem', position: gameSystemSlug ? 4 : 3, name: product.name, item: `${SITE_URL}/product/${product.slug}` },
+          ...(factionSlug
+            ? [{ '@type': 'ListItem', position: gameSystemSlug ? 3 : 2, name: product.faction, item: `${SITE_URL}/faction/${factionSlug}` }]
+            : []),
+          { '@type': 'ListItem', position: (gameSystemSlug ? 2 : 1) + (factionSlug ? 2 : 1), name: product.name, item: `${SITE_URL}/product/${product.slug}` },
         ],
       },
       {
@@ -120,7 +122,7 @@ export default async function ProductPage({
     notFound()
   }
 
-  const factionSlug = product.faction.toLowerCase().replace(/\s+/g, '-')
+  const factionSlug = product.faction?.toLowerCase().replace(/\s+/g, '-') ?? ''
   const gameSystemSlug = GAME_SYSTEM_SLUG_MAP[product.gameSystem] ?? ''
 
   const relatedProducts = await getRelatedProducts(factionSlug, params.slug, 8)
@@ -147,13 +149,17 @@ export default async function ProductPage({
             </Link>
           </>
         )}
-        <span>/</span>
-        <Link
-          href={`/faction/${factionSlug}`}
-          className="transition-colors hover:text-gold"
-        >
-          {product.faction}
-        </Link>
+        {factionSlug && (
+          <>
+            <span>/</span>
+            <Link
+              href={`/faction/${factionSlug}`}
+              className="transition-colors hover:text-gold"
+            >
+              {product.faction}
+            </Link>
+          </>
+        )}
         <span>/</span>
         <span className="text-bone-muted">{product.name}</span>
       </nav>
@@ -182,7 +188,7 @@ export default async function ProductPage({
         {/* Product info */}
         <div>
           <p className="text-sm font-medium uppercase tracking-wide text-gold/80">
-            {product.faction} · {product.gameSystem}
+            {[product.faction, product.gameSystem].filter(Boolean).join(' · ')}
           </p>
           <h1 className="mt-1 text-3xl font-bold text-bone">{product.name}</h1>
 
@@ -255,7 +261,7 @@ export default async function ProductPage({
       {relatedProducts.length > 0 && (
         <div className="mt-10">
           <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-xl font-bold text-bone">More {product.faction} Products</h2>
+            <h2 className="text-xl font-bold text-bone">More {product.faction ?? product.gameSystem} Products</h2>
             <Link
               href={`/faction/${factionSlug}`}
               className="text-sm text-gold transition-colors hover:text-gold-light"

@@ -235,7 +235,7 @@ export const getFactionProducts = cache(
         distinct: ['faction'],
       })
       const faction = factionRows.find(
-        (f) => f.faction.toLowerCase().replace(/\s+/g, '-') === factionSlug
+        (f) => f.faction?.toLowerCase().replace(/\s+/g, '-') === factionSlug
       )?.faction
 
       if (!faction) return []
@@ -286,7 +286,7 @@ export const searchProducts = async (
     id: string
     slug: string
     name: string
-    faction: string
+    faction: string | null
     game_system: string
     product_type: string
     gw_rrp_usd: string
@@ -455,7 +455,7 @@ export const getRelatedProducts = cache(
         distinct: ['faction'],
       })
       const faction = factionRows.find(
-        (f) => f.faction.toLowerCase().replace(/\s+/g, '-') === factionSlug
+        (f) => f.faction?.toLowerCase().replace(/\s+/g, '-') === factionSlug
       )?.faction
 
       if (!faction) return []
