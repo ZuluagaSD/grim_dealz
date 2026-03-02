@@ -162,11 +162,18 @@ Never store `gw_rrp_usd` on `listings`.
 
 Scraper **code** lives here in `scrapers/grim_dealz/`. Deployment configs (Dockerfile, docker-compose.yml, workspace.yaml) live in the separate `dagster` repo (`~/Git/Personal/dagster`).
 
+Deploy workflow: **commit & push to GitHub**, then pull on Pi and rebuild:
+
 ```bash
+# 1. Push scraper changes from this repo
+git push origin master
+
+# 2. Deploy to Pi (pulls from GitHub, copies scrapers, rebuilds Docker)
 cd ~/Git/Personal/dagster
-make deploy   # rsync configs + scrapers → zulu-pi, then docker compose build + up
+make deploy   # git pull on Pi → cp scrapers → docker compose build + up
 ```
 
+Pi repos: `~/grim_dealz` (clone of this repo), `~/dagster` (deploy configs + Docker build context)
 Dagster UI: `http://zulu-pi:3000`
 SSH config: `Host zulu-pi → 192.168.0.106, user zulu, key ~/.ssh/id_ed25519`
 
