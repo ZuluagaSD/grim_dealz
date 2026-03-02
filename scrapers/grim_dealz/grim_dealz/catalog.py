@@ -180,6 +180,15 @@ def _extract_game_system_faction(hit: dict) -> tuple[str | None, str | None]:
 
 def _extract_product_type(hit: dict, name: str) -> str | None:
     """Map Algolia productType to our internal type, with name-based overrides."""
+    # Name-based overrides take priority (e.g. "Combat Patrol" boxedsets → combat_patrol)
+    name_lower = name.lower()
+    if "combat patrol" in name_lower:
+        return "combat_patrol"
+    if "battleforce" in name_lower:
+        return "battleforce"
+    if any(t in name_lower for t in ("codex", "battletome", "army book")):
+        return "book"
+
     raw = hit.get("productType", "")
     if isinstance(raw, list):
         raw = raw[0] if raw else ""
@@ -188,13 +197,6 @@ def _extract_product_type(hit: dict, name: str) -> str | None:
     mapped = PRODUCT_TYPE_MAP.get(raw)
     if mapped:
         return mapped
-
-    # Name-based overrides
-    name_lower = name.lower()
-    if any(t in name_lower for t in ("combat patrol", "battleforce", "army set")):
-        return "box_set"
-    if any(t in name_lower for t in ("codex", "battletome", "army book")):
-        return "book"
 
     # Fallback to standard for unknown types (must be valid Prisma enum)
     return "standard"
