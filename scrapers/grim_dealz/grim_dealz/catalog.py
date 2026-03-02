@@ -30,7 +30,7 @@ ALGOLIA_APP_ID = "M5ZIQZNQ2H"
 ALGOLIA_API_KEY = "92c6a8254f9d34362df8e6d96475e5d8"
 ALGOLIA_INDEX = "prod-lazarus-product-en-us"
 
-GW_BASE_URL = "https://www.games-workshop.com"
+GW_BASE_URL = "https://www.warhammer.com"
 
 # ─────────────────────────────────────────
 # Skip / mapping constants
