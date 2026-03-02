@@ -18,11 +18,15 @@ datasource db {
 
 enum ProductType {
   standard
+  miniature
   battleforce
   combat_patrol
+  box_set
   paint
   codex
+  book
   terrain
+  accessory
 }
 
 // Scrapers MUST normalize raw strings to these values in base_store.py

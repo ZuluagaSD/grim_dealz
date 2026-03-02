@@ -42,28 +42,50 @@ SKIP_PRODUCT_TYPES = frozenset({
     "gift vouchers",
     "event tickets",
     "subscriptions",
+    "virtualgiftvoucher",
+    "digitalproduct",
+    "blackdigitallibrary",
+    "licensedproduct",
 })
 
-# Map Algolia productType → our internal product_type
+# Map Algolia productType → Prisma ProductType enum value.
+# Algolia values are lowercased before lookup.
 PRODUCT_TYPE_MAP = {
+    # Miniatures (current: "miniatureKit", legacy: "miniatures"/"miniature")
+    "miniaturekit": "miniature",
     "miniatures": "miniature",
     "miniature": "miniature",
+    # Paint & brushes
     "paint": "paint",
     "paints": "paint",
     "spray": "paint",
+    "brush": "paint",
+    # Accessories
     "tools and accessories": "accessory",
     "tools & accessories": "accessory",
     "tools": "accessory",
     "gaming accessories": "accessory",
+    "gamingaccessory": "accessory",
     "accessories": "accessory",
+    "accessory": "accessory",
     "bases": "accessory",
+    "base": "accessory",
     "dice": "accessory",
+    "gaming essentials": "accessory",
+    "proprietary": "accessory",
+    # Books & rules
     "books": "book",
+    "book": "book",
     "novels": "book",
+    "rulebookcards": "book",
+    "magazine": "book",
+    # Terrain
     "terrain": "terrain",
     "scenery": "terrain",
+    # Box sets
     "box sets": "box_set",
-    "gaming essentials": "accessory",
+    "boxedset": "box_set",
+    "bundle": "box_set",
 }
 
 # Warhammer 40K umbrella faction terms — not real factions
@@ -174,7 +196,8 @@ def _extract_product_type(hit: dict, name: str) -> str | None:
     if any(t in name_lower for t in ("codex", "battletome", "army book")):
         return "book"
 
-    return raw or None
+    # Fallback to standard for unknown types (must be valid Prisma enum)
+    return "standard"
 
 
 def _extract_price(hit: dict) -> float | None:
