@@ -10,6 +10,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.warhammer.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.games-workshop.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.games-workshop.com',
+      },
     ],
   },
 }

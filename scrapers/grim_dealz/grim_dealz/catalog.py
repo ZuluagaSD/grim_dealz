@@ -216,6 +216,23 @@ def _extract_price(hit: dict) -> float | None:
 
 def _extract_image_url(hit: dict) -> str | None:
     """Extract product image URL, resolving relative paths against GW domain."""
+    # Current format: "images" is a list of relative paths
+    images = hit.get("images")
+    if isinstance(images, list) and images:
+        # Pick the first static image (920x950), skip threeSixty paths
+        for img in images:
+            img_str = str(img)
+            if "threeSixty" not in img_str:
+                if not img_str.startswith("http"):
+                    img_str = f"{GW_BASE_URL}{img_str}"
+                return img_str
+        # Fallback to first image if all are threeSixty
+        url = str(images[0])
+        if not url.startswith("http"):
+            url = f"{GW_BASE_URL}{url}"
+        return url
+
+    # Legacy field names
     for key in ("primaryImage", "imageUrl", "image", "image_url"):
         val = hit.get(key)
         if val:
@@ -227,7 +244,13 @@ def _extract_image_url(hit: dict) -> str | None:
 
 
 def _extract_gw_url(hit: dict) -> str | None:
-    """Extract GW product page URL, resolving relative paths."""
+    """Extract GW product page URL from slug or url field."""
+    # Current format: "slug" field (e.g. "Space-Marines-Primaris-Intercessors-2020")
+    slug = hit.get("slug")
+    if slug:
+        return f"{GW_BASE_URL}/en-US/{slug}"
+
+    # Legacy: full or relative "url" field
     url = hit.get("url")
     if not url:
         return None
