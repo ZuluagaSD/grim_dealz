@@ -253,15 +253,28 @@ def algolia_hit_to_raw_product(hit: dict) -> RawProduct | None:
 
 
 # ─────────────────────────────────────────
-# Algolia fetch — browse all products
+# Algolia fetch — search all products
 # ─────────────────────────────────────────
+
+# Algolia search/query caps at 1000 results per query (paginatedTotal).
+# We partition by GameSystemsRoot.lvl0 facet so each bucket stays under 1000,
+# plus one catch-all query for products with no game system tag.
+_GAME_SYSTEM_FACETS = [
+    "Warhammer 40,000",
+    "Age of Sigmar",
+    "The Horus Heresy",
+    "The Old World",
+    "Middle-Earth",
+    "Other Games",
+]
 
 
 async def fetch_all_algolia_products(log=None) -> list[dict]:
-    """Fetch all GW products from Algolia using the browse API.
+    """Fetch all GW products from Algolia using the search API.
 
-    Paginates through the full index using cursor-based browsing,
-    deduplicating by objectID. Typically completes in ~16 requests.
+    The browse endpoint is restricted (403), so we use /query with
+    facet filters to partition results into buckets < 1000 each.
+    Deduplicates by objectID across all buckets.
     """
     _log = log or logger
     seen: dict[str, dict] = {}
@@ -271,39 +284,48 @@ async def fetch_all_algolia_products(log=None) -> list[dict]:
         "X-Algolia-API-Key": ALGOLIA_API_KEY,
         "Content-Type": "application/json",
     }
-    browse_url = (
+    query_url = (
         f"https://{ALGOLIA_APP_ID}-dsn.algolia.net"
-        f"/1/indexes/{ALGOLIA_INDEX}/browse"
+        f"/1/indexes/{ALGOLIA_INDEX}/query"
     )
 
+    # Build filter list: one per game system + one NOT filter for uncategorised
+    filters: list[str] = [
+        f"GameSystemsRoot.lvl0:\"{gs}\"" for gs in _GAME_SYSTEM_FACETS
+    ]
+    not_clause = " AND ".join(
+        f"NOT GameSystemsRoot.lvl0:\"{gs}\"" for gs in _GAME_SYSTEM_FACETS
+    )
+    filters.append(not_clause)
+
     async with httpx.AsyncClient(timeout=30.0) as client:
-        cursor = None
-        page = 0
+        for facet_filter in filters:
+            page = 0
+            while True:
+                body = {
+                    "params": f"hitsPerPage=1000&query=&page={page}",
+                    "filters": facet_filter,
+                }
+                resp = await client.post(query_url, headers=headers, json=body)
+                resp.raise_for_status()
+                data = resp.json()
 
-        while True:
-            body: dict = (
-                {"cursor": cursor} if cursor else {"params": "hitsPerPage=1000"}
-            )
+                hits = data.get("hits", [])
+                for hit in hits:
+                    seen[hit["objectID"]] = hit
 
-            resp = await client.post(browse_url, headers=headers, json=body)
-            resp.raise_for_status()
-            data = resp.json()
+                _log.info(
+                    "Algolia [%s] page %d: %d hits (total unique: %d)",
+                    facet_filter[:40],
+                    page,
+                    len(hits),
+                    len(seen),
+                )
 
-            hits = data.get("hits", [])
-            for hit in hits:
-                seen[hit["objectID"]] = hit
-
-            page += 1
-            _log.info(
-                "Algolia page %d: %d hits (total unique: %d)",
-                page,
-                len(hits),
-                len(seen),
-            )
-
-            cursor = data.get("cursor")
-            if not cursor or not hits:
-                break
+                page += 1
+                nb_pages = data.get("nbPages", 0)
+                if page >= nb_pages or not hits:
+                    break
 
     _log.info("Algolia fetch complete: %d unique products", len(seen))
     return list(seen.values())
