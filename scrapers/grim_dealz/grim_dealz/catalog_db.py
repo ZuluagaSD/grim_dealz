@@ -84,7 +84,7 @@ async def upsert_catalog_product(
                 product.gw_item_number,
                 product.faction,
                 product.game_system,
-                product.game_system,  # category = game_system on initial insert
+                product.game_system or product.product_type or "other",  # category fallback
                 product.product_type,
                 product.gw_rrp_usd,
                 product.image_url,
