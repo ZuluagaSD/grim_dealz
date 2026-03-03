@@ -139,29 +139,6 @@ const stores = [
     isActive: false,
   },
 
-  // ── Phase 4 — UK Expansion ─────────────────────────────────────────
-  {
-    slug: 'element-games',
-    name: 'Element Games',
-    baseUrl: 'https://www.elementgames.co.uk',
-    region: 'UK',
-    affiliateNetwork: 'awin',
-    affiliateTag: null,
-    commissionPct: 7.0,
-    typicalDiscountPct: 20.0,
-    isActive: false,
-  },
-  {
-    slug: 'wayland-games',
-    name: 'Wayland Games',
-    baseUrl: 'https://www.waylandgames.co.uk',
-    region: 'UK',
-    affiliateNetwork: 'awin',
-    affiliateTag: null,
-    commissionPct: 7.0,
-    typicalDiscountPct: 20.0,
-    isActive: false,
-  },
 ] as const
 
 async function main() {

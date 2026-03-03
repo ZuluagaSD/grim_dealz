@@ -14,8 +14,6 @@ scrape_job = define_asset_job(
         "discount_games_inc_listings",
         "frontline_gaming_listings",
         "game_nerdz_listings",
-        "element_games_listings",
-        "wayland_games_listings",
         "revalidate_cache",
     ],
     description="Sync GW catalog + scrape prices from all stores + update Supabase.",

@@ -25,11 +25,9 @@ from .catalog_db import sync_gw_catalog
 from .db import stream_upsert
 from .enrich_catalog_codes import enrich_catalog_codes
 from .stores.discount_games_inc import DiscountGamesIncScraper
-from .stores.element_games import ElementGamesScraper
 from .stores.frontline_gaming import FrontlineGamingScraper
 from .stores.game_nerdz import GameNerdzScraper
 from .stores.miniature_market import MiniatureMarketScraper
-from .stores.wayland_games import WaylandGamesScraper
 
 logger = logging.getLogger(__name__)
 
@@ -191,56 +189,6 @@ def game_nerdz_listings(context) -> dict:
     }
 
 
-@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
-def element_games_listings(context) -> dict:
-    """Scrape and upsert GW prices from Element Games (UK, GBP)."""
-    async def _run():
-        async with ElementGamesScraper() as scraper:
-            return await stream_upsert(scraper.store_slug, scraper.scrape(), log=context.log)
-
-    stats = _run_async(_run())
-    context.add_output_metadata({
-        "total_scraped": stats.total_scraped,
-        "matched": stats.matched,
-        "upserted": stats.upserted,
-        "price_changes": stats.price_changes,
-        "errors": len(stats.errors),
-    })
-    return {
-        "store_slug": stats.store_slug,
-        "total_scraped": stats.total_scraped,
-        "matched": stats.matched,
-        "upserted": stats.upserted,
-        "price_changes": stats.price_changes,
-        "errors": len(stats.errors),
-    }
-
-
-@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
-def wayland_games_listings(context) -> dict:
-    """Scrape and upsert GW prices from Wayland Games (UK, GBP)."""
-    async def _run():
-        async with WaylandGamesScraper() as scraper:
-            return await stream_upsert(scraper.store_slug, scraper.scrape(), log=context.log)
-
-    stats = _run_async(_run())
-    context.add_output_metadata({
-        "total_scraped": stats.total_scraped,
-        "matched": stats.matched,
-        "upserted": stats.upserted,
-        "price_changes": stats.price_changes,
-        "errors": len(stats.errors),
-    })
-    return {
-        "store_slug": stats.store_slug,
-        "total_scraped": stats.total_scraped,
-        "matched": stats.matched,
-        "upserted": stats.upserted,
-        "price_changes": stats.price_changes,
-        "errors": len(stats.errors),
-    }
-
-
 @asset(group_name="grim_dealz")
 def revalidate_cache(
     context,
@@ -248,8 +196,6 @@ def revalidate_cache(
     discount_games_inc_listings: dict,
     frontline_gaming_listings: dict,
     game_nerdz_listings: dict,
-    element_games_listings: dict,
-    wayland_games_listings: dict,
 ) -> None:
     """Post ISR revalidation webhook to Next.js after all stores are scraped.
 
@@ -265,8 +211,6 @@ def revalidate_cache(
         discount_games_inc_listings,
         frontline_gaming_listings,
         game_nerdz_listings,
-        element_games_listings,
-        wayland_games_listings,
     ]
     changed_stores = [
         s["store_slug"] for s in all_stats
