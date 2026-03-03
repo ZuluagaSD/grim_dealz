@@ -199,16 +199,18 @@ async def _load_products_index(
 async def _update_catalog_code(
     conn: psycopg.AsyncConnection, product_id: str, code: str
 ) -> bool:
-    """Set gw_catalog_code on a product. Returns False if code already taken."""
+    """Set gw_catalog_code on a product. Returns False if code already taken.
+
+    Requires autocommit=True on the connection so each UPDATE is its own
+    transaction — concurrent coroutines won't poison each other's state.
+    """
     try:
         await conn.execute(
             "UPDATE products SET gw_catalog_code = %s WHERE id = %s",
             (code, product_id),
         )
-        await conn.commit()
         return True
     except psycopg.errors.UniqueViolation:
-        await conn.rollback()
         logger.debug("Catalog code %s already assigned — skipping", code)
         return False
 
@@ -426,7 +428,7 @@ async def enrich_catalog_codes(dsn: str, log: logging.Logger | None = None) -> E
         follow_redirects=True,
         http2=True,
     ) as client:
-        async with await psycopg.AsyncConnection.connect(dsn) as conn:
+        async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
             index = await _load_products_index(conn)
             products_needing_codes = len(index)
             _log.info("Products needing catalog codes: %d", products_needing_codes)
