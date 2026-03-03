@@ -198,12 +198,19 @@ async def _load_products_index(
 
 async def _update_catalog_code(
     conn: psycopg.AsyncConnection, product_id: str, code: str
-) -> None:
-    await conn.execute(
-        "UPDATE products SET gw_catalog_code = %s WHERE id = %s",
-        (code, product_id),
-    )
-    await conn.commit()
+) -> bool:
+    """Set gw_catalog_code on a product. Returns False if code already taken."""
+    try:
+        await conn.execute(
+            "UPDATE products SET gw_catalog_code = %s WHERE id = %s",
+            (code, product_id),
+        )
+        await conn.commit()
+        return True
+    except psycopg.errors.UniqueViolation:
+        await conn.rollback()
+        logger.debug("Catalog code %s already assigned — skipping", code)
+        return False
 
 
 # ── Pass 1: Miniature Market ────────────────────────────────────────
@@ -271,9 +278,9 @@ async def _run_mm_pass(
             product_id, db_name = hit
             # Pop BEFORE await — prevents race condition (UniqueViolation)
             index.pop(key, None)
-            await _update_catalog_code(conn, product_id, item_number)
-            matched += 1
-            logger.debug("[MM] matched %s  retailer=%r  db=%r", item_number, name, db_name)
+            if await _update_catalog_code(conn, product_id, item_number):
+                matched += 1
+                logger.debug("[MM] matched %s  retailer=%r  db=%r", item_number, name, db_name)
         else:
             if len(sample_unmatched) < 30:
                 sample_unmatched.append(f"{item_number}: {name!r}")
@@ -373,9 +380,9 @@ async def _run_dgi_pass(
             product_id, db_name = hit
             # Pop BEFORE await — prevents race condition (UniqueViolation)
             index.pop(key, None)
-            await _update_catalog_code(conn, product_id, item_number)
-            matched += 1
-            logger.debug("[DGI] matched %s  retailer=%r  db=%r", item_number, name, db_name)
+            if await _update_catalog_code(conn, product_id, item_number):
+                matched += 1
+                logger.debug("[DGI] matched %s  retailer=%r  db=%r", item_number, name, db_name)
         else:
             if len(sample_unmatched) < 30:
                 sample_unmatched.append(f"{item_number}: {name!r}")
