@@ -74,6 +74,49 @@ function buildProductSchema(
   }
 }
 
+/** Data-driven product summary — generates unique text per product for indexability */
+function ProductSummary({
+  name,
+  faction,
+  gameSystem,
+  gwRrpUsd,
+  storeCount,
+  cheapestPrice,
+  cheapestStore,
+  inStockCount,
+}: {
+  name: string
+  faction: string | null
+  gameSystem: string | null
+  gwRrpUsd: number
+  storeCount: number
+  cheapestPrice: number | null
+  cheapestStore: string | null
+  inStockCount: number
+}) {
+  const savings = cheapestPrice ? gwRrpUsd - cheapestPrice : 0
+  const discountPct = cheapestPrice ? Math.round((savings / gwRrpUsd) * 100) : 0
+
+  return (
+    <div className="space-y-2 text-sm leading-relaxed text-bone-muted">
+      <p>
+        {name} has a Games Workshop RRP of ${gwRrpUsd.toFixed(2)}
+        {faction ? ` and belongs to the ${faction} faction` : ''}
+        {gameSystem ? ` in ${gameSystem}` : ''}.
+        {storeCount > 0
+          ? ` We found it listed at ${storeCount} authorized US retailer${storeCount !== 1 ? 's' : ''}${inStockCount > 0 ? `, with ${inStockCount} currently showing in stock` : ''}.`
+          : ' No retailers currently list this product.'}
+      </p>
+      {cheapestPrice && cheapestStore && savings > 0 && (
+        <p>
+          The lowest price is ${cheapestPrice.toFixed(2)} at {cheapestStore}, saving you ${savings.toFixed(2)} ({discountPct}% off RRP).
+          Prices are verified by our scrapers every 4 hours.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export const revalidate = 14400
 export const dynamicParams = true
 
@@ -94,7 +137,9 @@ export async function generateMetadata({
     ? `Buy ${product.name} from $${Number(cheapest.currentPrice).toFixed(2)} — ${Math.round(Number(cheapest.discountPct))}% off GW RRP. Compare 10+ authorized US retailers.`
     : `Compare prices for ${product.name} across 10+ authorized US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`
 
-  const hasListings = product.listings.length > 0
+  // noindex product pages with <2 in-stock listings — thin / no comparison value.
+  // Once scrapers add listings, next ISR revalidation removes the tag.
+  const inStockCount = product.listings.filter((l) => l.inStock).length
 
   return {
     title: `${product.name} — Best Price`,
@@ -102,9 +147,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `/product/${product.slug}`,
     },
-    // noindex product pages with no retailer listings — thin content.
-    // Once scrapers add listings, next ISR revalidation removes the tag.
-    ...(!hasListings && { robots: { index: false, follow: true } }),
+    ...(inStockCount < 2 && { robots: { index: false, follow: true } }),
   }
 }
 
@@ -241,6 +284,24 @@ export default async function ProductPage({
           </div>
         </div>
       </div>
+
+      {/* Product Summary — unique text content for SEO */}
+      <section className="mt-10 rounded-lg border border-ink-rim bg-ink-card p-6">
+        {product.description ? (
+          <p className="text-sm leading-relaxed text-bone-muted">{product.description}</p>
+        ) : (
+          <ProductSummary
+            name={product.name}
+            faction={product.faction}
+            gameSystem={product.gameSystem}
+            gwRrpUsd={Number(product.gwRrpUsd)}
+            storeCount={listings.length}
+            cheapestPrice={cheapest?.currentPrice ?? null}
+            cheapestStore={cheapest?.storeName ?? null}
+            inStockCount={listings.filter((l) => l.inStock).length}
+          />
+        )}
+      </section>
 
       {/* Price Comparison Table */}
       <div className="mt-10">

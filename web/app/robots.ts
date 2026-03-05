@@ -3,16 +3,26 @@ import { prisma } from '@/lib/prisma'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 const PRODUCTS_PER_SITEMAP = 1000
+const MIN_LISTINGS_FOR_SITEMAP = 2
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  // Dynamically compute the same sitemap IDs as sitemap.ts generateSitemaps()
-  const count = await prisma.product.count({
-    where: {
-      isActive: true,
-      listings: { some: { store: { isActive: true } } },
-    },
-  })
-  const productChunks = Math.max(1, Math.ceil(count / PRODUCTS_PER_SITEMAP))
+  // Count products with 2+ in-stock listings — must match sitemap.ts logic
+  const rows = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) AS count FROM (
+      SELECT p.id
+      FROM products p
+      JOIN listings l ON l.product_id = p.id
+      JOIN stores  s ON s.id = l.store_id
+      WHERE p.is_active = TRUE
+        AND s.is_active = TRUE
+        AND l.in_stock  = TRUE
+      GROUP BY p.id
+      HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_SITEMAP}
+    ) sub
+  `
+  const productCount = Number(rows[0]?.count ?? 0)
+  const productChunks = Math.max(1, Math.ceil(productCount / PRODUCTS_PER_SITEMAP))
+
   const sitemapUrls = []
   for (let i = 0; i <= productChunks; i++) {
     sitemapUrls.push(`${SITE_URL}/sitemap/${i}.xml`)

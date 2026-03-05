@@ -59,12 +59,12 @@ async def upsert_catalog_product(
             INSERT INTO products (
                 id, slug, name, gw_item_number, faction, game_system,
                 category, product_type, gw_rrp_usd, image_url, gw_url,
-                is_active, created_at, updated_at
+                description, is_active, created_at, updated_at
             )
             VALUES (
                 gen_random_uuid(), %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
-                TRUE, NOW(), NOW()
+                %s, TRUE, NOW(), NOW()
             )
             ON CONFLICT (gw_item_number) DO UPDATE SET
                 name = EXCLUDED.name,
@@ -74,6 +74,7 @@ async def upsert_catalog_product(
                 gw_rrp_usd = EXCLUDED.gw_rrp_usd,
                 image_url = EXCLUDED.image_url,
                 gw_url = EXCLUDED.gw_url,
+                description = COALESCE(EXCLUDED.description, products.description),
                 is_active = TRUE,
                 updated_at = NOW()
             RETURNING (xmax = 0) AS inserted
@@ -89,6 +90,7 @@ async def upsert_catalog_product(
                 product.gw_rrp_usd,
                 product.image_url,
                 product.gw_url,
+                product.description,
             ),
         )
     ).fetchone()

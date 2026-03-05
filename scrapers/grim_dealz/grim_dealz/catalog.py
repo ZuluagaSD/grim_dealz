@@ -125,6 +125,7 @@ class RawProduct:
     gw_rrp_usd: float
     image_url: str | None
     gw_url: str | None
+    description: str | None = None
 
 
 # ─────────────────────────────────────────
@@ -262,6 +263,20 @@ def _extract_gw_url(hit: dict) -> str | None:
     return url
 
 
+def _extract_description(hit: dict) -> str | None:
+    """Extract product description from Algolia hit, stripping HTML tags."""
+    for key in ("shortDescription", "description", "longDescription"):
+        val = hit.get(key)
+        if val and isinstance(val, str):
+            # Strip HTML tags — descriptions sometimes contain <p>, <br>, etc.
+            text = re.sub(r"<[^>]+>", " ", val).strip()
+            # Collapse whitespace
+            text = re.sub(r"\s+", " ", text)
+            if len(text) > 20:  # skip trivially short descriptions
+                return text
+    return None
+
+
 def algolia_hit_to_raw_product(hit: dict) -> RawProduct | None:
     """Convert an Algolia hit to a RawProduct, or None if invalid/skippable."""
     name = hit.get("name") or hit.get("title", "")
@@ -297,6 +312,7 @@ def algolia_hit_to_raw_product(hit: dict) -> RawProduct | None:
         gw_rrp_usd=price,
         image_url=_extract_image_url(hit),
         gw_url=_extract_gw_url(hit),
+        description=_extract_description(hit),
     )
 
 

@@ -65,6 +65,7 @@ model Product {
   category      String
   productType   ProductType @default(standard) @map("product_type")
   gwRrpUsd      Decimal     @map("gw_rrp_usd") @db.Decimal(10, 2)
+  description   String?     @db.Text
   imageUrl      String?     @map("image_url")
   isActive      Boolean     @default(true) @map("is_active")
   createdAt     DateTime    @default(now()) @map("created_at")

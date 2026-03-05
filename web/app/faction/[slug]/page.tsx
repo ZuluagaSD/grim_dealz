@@ -27,7 +27,8 @@ export async function generateMetadata({
     .join(' ')
 
   const products = await getFactionProducts(params.slug)
-  const hasProducts = products.length > 0
+  // noindex factions with fewer than 3 products — thin listing pages waste crawl budget
+  const isThin = products.length < 3
 
   return {
     title: `${factionName} Warhammer Prices — Compare Retailers`,
@@ -35,8 +36,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `/faction/${params.slug}`,
     },
-    // noindex faction pages with no products — thin content
-    ...(!hasProducts && { robots: { index: false, follow: true } }),
+    ...(isThin && { robots: { index: false, follow: true } }),
   }
 }
 

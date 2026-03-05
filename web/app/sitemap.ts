@@ -8,23 +8,40 @@ const GAME_SLUGS = ['warhammer-40k', 'age-of-sigmar', 'horus-heresy', 'the-old-w
 
 const PRODUCTS_PER_SITEMAP = 1000
 
+// Minimum in-stock active listings to earn a sitemap entry.
+// Products with <2 listings provide no comparison value → waste crawl budget.
+const MIN_LISTINGS_FOR_SITEMAP = 2
+
 /** Encode characters that are invalid in XML sitemap URLs */
 function xmlSafeUrl(url: string): string {
   return url.replace(/&/g, '&amp;').replace(/'/g, '&apos;').replace(/"/g, '&quot;')
 }
 
+/** Count products with N+ in-stock listings from active stores */
+async function countSitemapProducts(): Promise<number> {
+  const rows = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) AS count FROM (
+      SELECT p.id
+      FROM products p
+      JOIN listings l ON l.product_id = p.id
+      JOIN stores  s ON s.id = l.store_id
+      WHERE p.is_active = TRUE
+        AND s.is_active = TRUE
+        AND l.in_stock  = TRUE
+      GROUP BY p.id
+      HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_SITEMAP}
+    ) sub
+  `
+  return Number(rows[0]?.count ?? 0)
+}
+
 /**
  * Split into multiple sitemaps (sitemap index):
  *   id=0  → static pages + game pages + faction pages
- *   id=1+ → product pages (only those with active listings), chunked
+ *   id=1+ → product pages (only those with 2+ active in-stock listings), chunked
  */
 export async function generateSitemaps() {
-  const count = await prisma.product.count({
-    where: {
-      isActive: true,
-      listings: { some: { store: { isActive: true } } },
-    },
-  })
+  const count = await countSitemapProducts()
 
   const productChunks = Math.max(1, Math.ceil(count / PRODUCTS_PER_SITEMAP))
   const ids = [{ id: 0 }]
@@ -41,23 +58,21 @@ export default async function sitemap({
 }): Promise<MetadataRoute.Sitemap> {
   if (id === 0) {
     const staticPages: MetadataRoute.Sitemap = [
-      { url: SITE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1.0 },
-      { url: `${SITE_URL}/deals`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.8 },
-      { url: `${SITE_URL}/battleforce-tracker`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-      { url: `${SITE_URL}/factions`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
-      { url: `${SITE_URL}/privacy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+      { url: SITE_URL, changeFrequency: 'daily', priority: 1.0 },
+      { url: `${SITE_URL}/deals`, changeFrequency: 'hourly', priority: 0.9 },
+      { url: `${SITE_URL}/battleforce-tracker`, changeFrequency: 'daily', priority: 0.9 },
+      { url: `${SITE_URL}/factions`, changeFrequency: 'weekly', priority: 0.7 },
+      { url: `${SITE_URL}/privacy`, changeFrequency: 'monthly', priority: 0.3 },
     ]
 
     const gamePages: MetadataRoute.Sitemap = GAME_SLUGS.map((slug) => ({
       url: `${SITE_URL}/game/${slug}`,
-      lastModified: new Date(),
       changeFrequency: 'daily' as const,
-      priority: 0.7,
+      priority: 0.8,
     }))
 
     const gameDealsPages: MetadataRoute.Sitemap = GAME_SLUGS.map((slug) => ({
       url: `${SITE_URL}/deals/${slug}`,
-      lastModified: new Date(),
       changeFrequency: 'hourly' as const,
       priority: 0.8,
     }))
@@ -65,7 +80,6 @@ export default async function sitemap({
     const factions = await getFactionsWithListings()
     const factionPages: MetadataRoute.Sitemap = factions.map((f) => ({
       url: xmlSafeUrl(`${SITE_URL}/faction/${f.slug}`),
-      lastModified: new Date(),
       changeFrequency: 'daily' as const,
       priority: 0.8,
     }))
@@ -73,32 +87,34 @@ export default async function sitemap({
     return [...staticPages, ...gamePages, ...gameDealsPages, ...factionPages]
   }
 
-  // Product pages — only products that have at least one active listing.
+  // Product pages — only products with 2+ in-stock listings from active stores.
   // Uses listing lastCheckedAt for accurate lastModified signal.
   const skip = (id - 1) * PRODUCTS_PER_SITEMAP
-  const products = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      listings: { some: { store: { isActive: true } } },
-    },
-    select: {
-      slug: true,
-      listings: {
-        where: { store: { isActive: true } },
-        select: { lastCheckedAt: true },
-        orderBy: { lastCheckedAt: 'desc' },
-        take: 1,
-      },
-    },
-    orderBy: { name: 'asc' },
-    skip,
-    take: PRODUCTS_PER_SITEMAP,
-  })
+  type Row = { slug: string; last_checked: Date | null }
+  const products = await prisma.$queryRaw<Row[]>`
+    SELECT p.slug, MAX(l.last_checked_at) AS last_checked
+    FROM products p
+    JOIN listings l ON l.product_id = p.id
+    JOIN stores  s ON s.id = l.store_id
+    WHERE p.is_active = TRUE
+      AND s.is_active = TRUE
+      AND l.in_stock  = TRUE
+    GROUP BY p.slug, p.name
+    HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_SITEMAP}
+    ORDER BY p.name ASC
+    OFFSET ${skip}
+    LIMIT ${PRODUCTS_PER_SITEMAP}
+  `
 
-  return products.map((p) => ({
-    url: xmlSafeUrl(`${SITE_URL}/product/${p.slug}`),
-    lastModified: p.listings[0]?.lastCheckedAt ?? new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.7,
-  }))
+  return products.map((p) => {
+    const entry: MetadataRoute.Sitemap[number] = {
+      url: xmlSafeUrl(`${SITE_URL}/product/${p.slug}`),
+      changeFrequency: 'daily' as const,
+      priority: 0.7,
+    }
+    if (p.last_checked) {
+      entry.lastModified = p.last_checked
+    }
+    return entry
+  })
 }
