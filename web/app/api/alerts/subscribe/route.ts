@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getResend, FROM_EMAIL, SITE_URL } from '@/lib/resend'
 import { verificationEmail, welcomeAlertEmail } from '@/lib/email-templates'
+import type { AlertEmailProduct } from '@/lib/email-templates'
 import { isRateLimited, getClientIp } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
@@ -13,6 +14,54 @@ interface SubscribeBody {
   email: string
   productId: string
   targetPrice: number
+}
+
+async function getAlertEmailProduct(productId: string): Promise<AlertEmailProduct | null> {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      name: true,
+      slug: true,
+      imageUrl: true,
+      faction: true,
+      gameSystem: true,
+      gwRrpUsd: true,
+      listings: {
+        where: { inStock: true, store: { isActive: true } },
+        include: { store: { select: { name: true } } },
+        orderBy: { currentPrice: 'asc' },
+        take: 1,
+      },
+    },
+  })
+  if (!product) return null
+
+  type PriceRow = { scraped_at: Date | string; price: string }
+  const priceHistory = await prisma.$queryRaw<PriceRow[]>`
+    SELECT ph.scraped_at, ph.price::text
+    FROM price_history ph
+    JOIN listings l ON l.id = ph.listing_id
+    JOIN products p ON p.id = l.product_id
+    WHERE p.id = ${productId}
+      AND ph.scraped_at >= NOW() - INTERVAL '90 days'
+    ORDER BY ph.scraped_at ASC
+  `
+
+  const cheapest = product.listings[0]
+  return {
+    name: product.name,
+    slug: product.slug,
+    imageUrl: product.imageUrl,
+    faction: product.faction,
+    gameSystem: product.gameSystem,
+    gwRrpUsd: Number(product.gwRrpUsd),
+    currentPrice: cheapest ? Number(cheapest.currentPrice) : null,
+    storeName: cheapest ? cheapest.store.name : null,
+    priceHistory: priceHistory.map((r) => ({
+      date: typeof r.scraped_at === 'string' ? r.scraped_at : r.scraped_at.toISOString(),
+      price: parseFloat(r.price),
+    })),
+  }
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -43,11 +92,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Target price is required.' }, { status: 400 })
   }
 
-  // Validate product exists
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-    select: { id: true, name: true },
-  })
+  // Fetch rich product data for email
+  const product = await getAlertEmailProduct(productId)
   if (!product) {
     return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
   }
@@ -66,7 +112,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     where: {
       subscriberId_productId: {
         subscriberId: subscriber.id,
-        productId: product.id,
+        productId,
       },
     },
     update: {
@@ -75,7 +121,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     },
     create: {
       subscriberId: subscriber.id,
-      productId: product.id,
+      productId,
       targetPrice,
       status: subscriber.emailVerified ? 'active' : 'pending',
     },
@@ -83,12 +129,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   // Send verification or welcome email
   if (subscriber.emailVerified) {
-    const unsubscribeUrl = `${SITE_URL}/api/unsubscribe?token=${subscriber.unsubscribeToken}&type=alert&productId=${product.id}`
+    const unsubscribeUrl = `${SITE_URL}/api/unsubscribe?token=${subscriber.unsubscribeToken}&type=alert&productId=${productId}`
     void getResend().emails.send({
       from: FROM_EMAIL,
       to: normalizedEmail,
       subject: `Price alert set for ${product.name}`,
-      html: welcomeAlertEmail(product.name, targetPrice.toFixed(2), unsubscribeUrl),
+      html: welcomeAlertEmail(product, targetPrice.toFixed(2), unsubscribeUrl),
     })
   } else {
     const verifyUrl = `${SITE_URL}/api/verify?token=${subscriber.verifyToken}`
