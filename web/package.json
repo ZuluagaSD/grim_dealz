@@ -21,7 +21,8 @@
     "next": "14.2.29",
     "react": "^18",
     "react-dom": "^18",
-    "recharts": "^2.13.3"
+    "recharts": "^2.13.3",
+    "resend": "^6.9.3"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

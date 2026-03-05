@@ -1,9 +1,12 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { Inter, Cinzel } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import Link from 'next/link'
 import './globals.css'
 import MobileNav from '@/components/client/MobileNav'
+import NewsletterForm from '@/components/client/NewsletterForm'
+import ToastNotification from '@/components/client/ToastNotification'
 
 const inter = Inter({ subsets: ['latin'] })
 const cinzel = Cinzel({
@@ -77,6 +80,10 @@ export default function RootLayout({
           </div>
         </header>
 
+        <Suspense fallback={null}>
+          <ToastNotification />
+        </Suspense>
+
         <main>{children}</main>
         <Analytics />
 
@@ -100,6 +107,9 @@ export default function RootLayout({
               <Link href="/game/age-of-sigmar" className="transition-colors hover:text-gold">Age of Sigmar</Link>
               <Link href="/game/horus-heresy" className="transition-colors hover:text-gold">Horus Heresy</Link>
               <Link href="/game/the-old-world" className="transition-colors hover:text-gold">The Old World</Link>
+            </div>
+            <div className="mt-6 border-t border-ink-rim pt-6">
+              <NewsletterForm />
             </div>
             <div className="mt-6 border-t border-ink-rim pt-6 text-xs text-bone-faint">
               <p>
