@@ -39,6 +39,13 @@ enum StockStatus {
   limited
 }
 
+enum SubscriptionStatus {
+  pending
+  active
+  unsubscribed
+  bounced
+}
+
 // ─────────────────────────────────────────
 // products — canonical GW product catalog
 // Seeded once from warhammer.com via scrapers/seed_catalog.py
@@ -62,7 +69,8 @@ model Product {
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
-  listings Listing[]
+  listings    Listing[]
+  priceAlerts PriceAlert[]
 
   @@map("products")
 }
@@ -162,4 +170,62 @@ model ClickEvent {
   @@index([listingId])
   @@index([clickedAt])
   @@map("click_events")
+}
+
+// ─────────────────────────────────────────
+// email_subscribers — canonical email record for alerts & newsletter
+// Double opt-in: pending → verified → active subscriptions
+// ─────────────────────────────────────────
+
+model EmailSubscriber {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  verifyToken      String   @unique @default(uuid()) @map("verify_token")
+  unsubscribeToken String   @unique @default(uuid()) @map("unsubscribe_token")
+  emailVerified    Boolean  @default(false) @map("email_verified")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  priceAlerts            PriceAlert[]
+  newsletterSubscription NewsletterSubscription?
+
+  @@map("email_subscribers")
+}
+
+// ─────────────────────────────────────────
+// price_alerts — per-product price-drop watches
+// One alert per subscriber per product
+// ─────────────────────────────────────────
+
+model PriceAlert {
+  id             String             @id @default(uuid())
+  subscriberId   String             @map("subscriber_id")
+  productId      String             @map("product_id")
+  targetPrice    Decimal?           @map("target_price") @db.Decimal(10, 2)
+  status         SubscriptionStatus @default(pending)
+  lastNotifiedAt DateTime?          @map("last_notified_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  subscriber EmailSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriberId, productId])
+  @@index([productId])
+  @@index([status])
+  @@map("price_alerts")
+}
+
+// ─────────────────────────────────────────
+// newsletter_subscriptions — weekly digest opt-in
+// One-to-one with EmailSubscriber
+// ─────────────────────────────────────────
+
+model NewsletterSubscription {
+  id           String             @id @default(uuid())
+  subscriberId String             @unique @map("subscriber_id")
+  status       SubscriptionStatus @default(pending)
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  subscriber EmailSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@map("newsletter_subscriptions")
 }

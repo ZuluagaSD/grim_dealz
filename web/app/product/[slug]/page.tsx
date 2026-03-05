@@ -4,6 +4,7 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import PriceComparisonTable from '@/components/server/PriceComparisonTable'
 import PriceHistoryChart from '@/components/client/PriceHistoryChart'
+import PriceAlertForm from '@/components/client/PriceAlertForm'
 import ProductCard from '@/components/server/ProductCard'
 import Link from 'next/link'
 import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams, getRelatedProducts, GAME_SYSTEM_SLUG_MAP } from '@/lib/data'
@@ -255,6 +256,15 @@ export default async function ProductPage({
       <div className="mt-10">
         <h2 className="mb-4 text-xl font-bold text-bone">Price History</h2>
         <PriceHistoryChart points={priceHistory} gwRrpUsd={Number(product.gwRrpUsd)} />
+      </div>
+
+      {/* Price Alert Signup */}
+      <div className="mt-10">
+        <PriceAlertForm
+          productId={product.id}
+          productName={product.name}
+          currentLowestPrice={cheapest ? cheapest.currentPrice : null}
+        />
       </div>
 
       {/* Related Products */}
