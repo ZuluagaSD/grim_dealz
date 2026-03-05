@@ -50,8 +50,8 @@ CREATE UNIQUE INDEX "price_alerts_subscriber_id_product_id_key" ON "price_alerts
 CREATE UNIQUE INDEX "newsletter_subscriptions_subscriber_id_key" ON "newsletter_subscriptions"("subscriber_id");
 
 -- AddForeignKey
-ALTER TABLE "price_alerts" ADD CONSTRAINT "price_alerts_subscriber_id_fkey" FOREIGN KEY ("subscriber_id") REFERENCES "email_subscribers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "price_alerts" ADD CONSTRAINT "price_alerts_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "price_alerts" ADD CONSTRAINT "price_alerts_subscriber_id_fkey" FOREIGN KEY ("subscriber_id") REFERENCES "email_subscribers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "price_alerts" ADD CONSTRAINT "price_alerts_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "newsletter_subscriptions" ADD CONSTRAINT "newsletter_subscriptions_subscriber_id_fkey" FOREIGN KEY ("subscriber_id") REFERENCES "email_subscribers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "newsletter_subscriptions" ADD CONSTRAINT "newsletter_subscriptions_subscriber_id_fkey" FOREIGN KEY ("subscriber_id") REFERENCES "email_subscribers"("id") ON DELETE CASCADE ON UPDATE CASCADE;

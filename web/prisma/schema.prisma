@@ -205,8 +205,8 @@ model PriceAlert {
   lastNotifiedAt DateTime?          @map("last_notified_at")
   createdAt      DateTime           @default(now()) @map("created_at")
 
-  subscriber EmailSubscriber @relation(fields: [subscriberId], references: [id])
-  product    Product         @relation(fields: [productId], references: [id])
+  subscriber EmailSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([subscriberId, productId])
   @@index([productId])
@@ -225,7 +225,7 @@ model NewsletterSubscription {
   status       SubscriptionStatus @default(pending)
   createdAt    DateTime           @default(now()) @map("created_at")
 
-  subscriber EmailSubscriber @relation(fields: [subscriberId], references: [id])
+  subscriber EmailSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
 
   @@map("newsletter_subscriptions")
 }

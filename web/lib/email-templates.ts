@@ -1,5 +1,9 @@
 // HTML email templates — GrimDealz dark theme (inline styles for email clients)
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 const COLORS = {
   ink: '#0c0c0c',
   inkCard: '#141414',
@@ -63,7 +67,7 @@ export function welcomeAlertEmail(
       You&rsquo;ll be notified when the price drops for:
     </p>
     <p style="color:${COLORS.bone};font-size:17px;font-weight:bold;margin:8px 0 16px;">
-      ${productName}
+      ${escapeHtml(productName)}
     </p>
     <p style="color:${COLORS.boneMuted};font-size:13px;margin:16px 0 0;">
       <a href="${unsubscribeUrl}" style="color:${COLORS.gold};text-decoration:underline;">Unsubscribe from this alert</a>
