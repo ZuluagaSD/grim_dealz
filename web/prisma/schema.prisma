@@ -42,6 +42,7 @@ enum StockStatus {
 enum SubscriptionStatus {
   pending
   active
+  notified
   unsubscribed
   bounced
 }

@@ -224,7 +224,7 @@ async def send_price_alerts(log=None) -> NotificationStats:
                     await conn.execute(
                         """
                         UPDATE price_alerts
-                        SET status = 'unsubscribed'::"SubscriptionStatus",
+                        SET status = 'notified'::"SubscriptionStatus",
                             last_notified_at = NOW()
                         WHERE id = %s
                         """,
