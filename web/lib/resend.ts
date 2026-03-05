@@ -1,10 +1,13 @@
 import { Resend } from 'resend'
 
-if (!process.env.RESEND_API_KEY) {
-  console.warn('RESEND_API_KEY is not set — email sending will fail')
-}
+let _resend: Resend | null = null
 
-export const resend = new Resend(process.env.RESEND_API_KEY)
+export function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY)
+  }
+  return _resend
+}
 
 export const FROM_EMAIL =
   process.env.EMAIL_FROM ?? 'GrimDealz <alerts@grimdealz.com>'

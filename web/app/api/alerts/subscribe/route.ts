@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { resend, FROM_EMAIL, SITE_URL } from '@/lib/resend'
+import { getResend, FROM_EMAIL, SITE_URL } from '@/lib/resend'
 import { verificationEmail, welcomeAlertEmail } from '@/lib/email-templates'
 import { isRateLimited, getClientIp } from '@/lib/rate-limit'
 
@@ -81,7 +81,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   // Send verification or welcome email
   if (subscriber.emailVerified) {
     const unsubscribeUrl = `${SITE_URL}/api/unsubscribe?token=${subscriber.unsubscribeToken}&type=alert&productId=${product.id}`
-    void resend.emails.send({
+    void getResend().emails.send({
       from: FROM_EMAIL,
       to: normalizedEmail,
       subject: `Price alert set for ${product.name}`,
@@ -89,7 +89,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     })
   } else {
     const verifyUrl = `${SITE_URL}/api/verify?token=${subscriber.verifyToken}`
-    void resend.emails.send({
+    void getResend().emails.send({
       from: FROM_EMAIL,
       to: normalizedEmail,
       subject: 'Verify your email — GrimDealz',

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { resend, FROM_EMAIL, SITE_URL } from '@/lib/resend'
+import { getResend, FROM_EMAIL, SITE_URL } from '@/lib/resend'
 import { welcomeAlertEmail, welcomeNewsletterEmail } from '@/lib/email-templates'
 
 export const runtime = 'nodejs'
@@ -46,7 +46,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     // Send welcome email for each activated alert
     for (const alert of subscriber.priceAlerts) {
       const unsubscribeUrl = `${SITE_URL}/api/unsubscribe?token=${subscriber.unsubscribeToken}&type=alert&productId=${alert.product.id}`
-      void resend.emails.send({
+      void getResend().emails.send({
         from: FROM_EMAIL,
         to: subscriber.email,
         subject: `Price alert set for ${alert.product.name}`,
@@ -63,7 +63,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     })
 
     const unsubscribeUrl = `${SITE_URL}/api/unsubscribe?token=${subscriber.unsubscribeToken}&type=newsletter`
-    void resend.emails.send({
+    void getResend().emails.send({
       from: FROM_EMAIL,
       to: subscriber.email,
       subject: 'Welcome to the GrimDealz Weekly Digest!',
