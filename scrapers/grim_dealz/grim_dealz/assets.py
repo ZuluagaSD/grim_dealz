@@ -24,6 +24,7 @@ from dagster import asset
 from .catalog_db import sync_gw_catalog
 from .db import stream_upsert
 from .enrich_catalog_codes import enrich_catalog_codes
+from .notifications import send_price_alerts
 from .stores.discount_games_inc import DiscountGamesIncScraper
 from .stores.frontline_gaming import FrontlineGamingScraper
 from .stores.game_nerdz import GameNerdzScraper
@@ -238,3 +239,19 @@ def revalidate_cache(
     except Exception:
         # Non-fatal — prices are already in DB, just ISR won't refresh immediately
         context.log.exception("Revalidation webhook failed (non-fatal)")
+
+
+@asset(group_name="grim_dealz", deps=[revalidate_cache])
+def price_alert_notifications(context) -> dict:
+    """Send one-time emails for price alerts that have been triggered."""
+    stats = _run_async(send_price_alerts(log=context.log))
+    context.add_output_metadata({
+        "alerts_checked": stats.alerts_checked,
+        "emails_sent": stats.emails_sent,
+        "errors": stats.errors,
+    })
+    return {
+        "alerts_checked": stats.alerts_checked,
+        "emails_sent": stats.emails_sent,
+        "errors": stats.errors,
+    }

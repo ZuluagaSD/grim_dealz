@@ -15,8 +15,9 @@ scrape_job = define_asset_job(
         "frontline_gaming_listings",
         "game_nerdz_listings",
         "revalidate_cache",
+        "price_alert_notifications",
     ],
-    description="Sync GW catalog + scrape prices from all stores + update Supabase.",
+    description="Sync GW catalog + scrape prices from all stores + update Supabase + send price alerts.",
     executor_def=in_process_executor,
 )
 
