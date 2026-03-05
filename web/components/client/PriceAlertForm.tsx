@@ -31,7 +31,7 @@ export default function PriceAlertForm({
         body: JSON.stringify({
           email,
           productId,
-          ...(targetPrice ? { targetPrice: parseFloat(targetPrice) } : {}),
+          targetPrice: parseFloat(targetPrice),
         }),
       })
 
@@ -61,7 +61,7 @@ export default function PriceAlertForm({
           <div>
             <p className="font-semibold text-bone">{message}</p>
             <p className="mt-1 text-sm text-bone-muted">
-              We&apos;ll email you when {productName} drops in price.
+              We&apos;ll email you once when {productName} hits your target price.
             </p>
           </div>
         </div>
@@ -73,7 +73,7 @@ export default function PriceAlertForm({
     <div className="rounded-xl border border-ink-rim bg-ink-card p-6">
       <h3 className="text-lg font-bold text-bone">Get Price Drop Alerts</h3>
       <p className="mt-1 text-sm text-bone-muted">
-        Get notified when {productName} drops in price.
+        Get a one-time email when {productName} hits your target price.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
@@ -92,24 +92,23 @@ export default function PriceAlertForm({
           />
         </div>
 
-        {currentLowestPrice !== null && (
-          <div>
-            <label htmlFor="target-price" className="block text-xs text-bone-muted mb-1">
-              Target price (optional) — currently ${currentLowestPrice.toFixed(2)}
-            </label>
-            <input
-              id="target-price"
-              type="number"
-              step="0.01"
-              min="0"
-              max={currentLowestPrice}
-              placeholder={`e.g. ${(currentLowestPrice * 0.9).toFixed(2)}`}
-              value={targetPrice}
-              onChange={(e) => setTargetPrice(e.target.value)}
-              className="w-full rounded-lg border border-ink-rim bg-ink px-4 py-2.5 text-sm text-bone placeholder:text-bone-faint focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/50"
-            />
-          </div>
-        )}
+        <div>
+          <label htmlFor="target-price" className="block text-xs text-bone-muted mb-1">
+            Target price{currentLowestPrice !== null ? ` — currently $${currentLowestPrice.toFixed(2)}` : ''}
+          </label>
+          <input
+            id="target-price"
+            type="number"
+            step="0.01"
+            min="0.01"
+            required
+            {...(currentLowestPrice !== null ? { max: currentLowestPrice } : {})}
+            placeholder={currentLowestPrice !== null ? `e.g. ${(currentLowestPrice * 0.9).toFixed(2)}` : 'e.g. 30.00'}
+            value={targetPrice}
+            onChange={(e) => setTargetPrice(e.target.value)}
+            className="w-full rounded-lg border border-ink-rim bg-ink px-4 py-2.5 text-sm text-bone placeholder:text-bone-faint focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/50"
+          />
+        </div>
 
         {state === 'error' && (
           <p className="text-sm text-red-400">{message}</p>

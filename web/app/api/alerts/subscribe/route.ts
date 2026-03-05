@@ -12,7 +12,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 interface SubscribeBody {
   email: string
   productId: string
-  targetPrice?: number
+  targetPrice: number
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -38,6 +38,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
   if (!productId) {
     return NextResponse.json({ error: 'Product ID is required.' }, { status: 400 })
+  }
+  if (targetPrice == null || targetPrice <= 0) {
+    return NextResponse.json({ error: 'Target price is required.' }, { status: 400 })
   }
 
   // Validate product exists
@@ -68,12 +71,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     },
     update: {
       status: subscriber.emailVerified ? 'active' : 'pending',
-      targetPrice: targetPrice ?? null,
+      targetPrice,
     },
     create: {
       subscriberId: subscriber.id,
       productId: product.id,
-      targetPrice: targetPrice ?? null,
+      targetPrice,
       status: subscriber.emailVerified ? 'active' : 'pending',
     },
   })
@@ -85,7 +88,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       from: FROM_EMAIL,
       to: normalizedEmail,
       subject: `Price alert set for ${product.name}`,
-      html: welcomeAlertEmail(product.name, unsubscribeUrl),
+      html: welcomeAlertEmail(product.name, targetPrice.toFixed(2), unsubscribeUrl),
     })
   } else {
     const verifyUrl = `${SITE_URL}/api/verify?token=${subscriber.verifyToken}`

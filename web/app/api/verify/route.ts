@@ -50,7 +50,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         from: FROM_EMAIL,
         to: subscriber.email,
         subject: `Price alert set for ${alert.product.name}`,
-        html: welcomeAlertEmail(alert.product.name, unsubscribeUrl),
+        html: welcomeAlertEmail(alert.product.name, alert.targetPrice?.toString() ?? '0', unsubscribeUrl),
       })
     }
   }

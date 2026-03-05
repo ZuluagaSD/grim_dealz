@@ -59,18 +59,19 @@ export function verificationEmail(verifyUrl: string): string {
 
 export function welcomeAlertEmail(
   productName: string,
+  targetPrice: string,
   unsubscribeUrl: string
 ): string {
   return layout(`
     <h1 style="color:${COLORS.bone};font-size:22px;margin:0 0 12px;">Price alert activated!</h1>
     <p style="color:${COLORS.boneMuted};font-size:15px;line-height:1.6;margin:0 0 8px;">
-      You&rsquo;ll be notified when the price drops for:
+      You&rsquo;ll get a one-time email when the price drops to <strong style="color:${COLORS.bone};">$${escapeHtml(targetPrice)}</strong> or below for:
     </p>
     <p style="color:${COLORS.bone};font-size:17px;font-weight:bold;margin:8px 0 16px;">
       ${escapeHtml(productName)}
     </p>
     <p style="color:${COLORS.boneMuted};font-size:13px;margin:16px 0 0;">
-      <a href="${unsubscribeUrl}" style="color:${COLORS.gold};text-decoration:underline;">Unsubscribe from this alert</a>
+      <a href="${unsubscribeUrl}" style="color:${COLORS.gold};text-decoration:underline;">Cancel this alert</a>
     </p>
   `)
 }
