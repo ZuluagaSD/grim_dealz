@@ -25,6 +25,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
   ),
+  manifest: '/site.webmanifest',
+  other: {
+    'theme-color': '#0c0c0c',
+  },
   openGraph: {
     type: 'website',
     siteName: 'GrimDealz',
