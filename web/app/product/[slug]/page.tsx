@@ -8,6 +8,7 @@ import PriceAlertForm from '@/components/client/PriceAlertForm'
 import ProductCard from '@/components/server/ProductCard'
 import Link from 'next/link'
 import { getProduct, getProductListings, getPriceHistory, generateProductStaticParams, getRelatedProducts, GAME_SYSTEM_SLUG_MAP } from '@/lib/data'
+import { MIN_LISTINGS_FOR_INDEX } from '@/lib/seo-constants'
 import type { ProductWithListings, SerializedListing } from '@/lib/types'
 import { formatPrice } from '@/lib/format'
 
@@ -42,6 +43,11 @@ function buildProductSchema(
       {
         '@type': 'Product',
         name: product.name,
+        url: `${SITE_URL}/product/${product.slug}`,
+        description: product.description
+          ?? `Compare prices for ${product.name} across authorized US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`,
+        category: 'Toys & Games > Toys > Building Toys',
+        itemCondition: 'https://schema.org/NewCondition',
         ...(product.imageUrl ? { image: product.imageUrl } : {}),
         brand: { '@type': 'Brand', name: 'Games Workshop' },
         sku: product.gwItemNumber,
@@ -147,7 +153,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `/product/${product.slug}`,
     },
-    ...(inStockCount < 2 && { robots: { index: false, follow: true } }),
+    ...(inStockCount < MIN_LISTINGS_FOR_INDEX && { robots: { index: false, follow: true } }),
   }
 }
 

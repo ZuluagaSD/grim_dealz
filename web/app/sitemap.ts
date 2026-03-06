@@ -1,16 +1,15 @@
 import type { MetadataRoute } from 'next'
 import { prisma } from '@/lib/prisma'
 import { getFactionsWithListings } from '@/lib/data'
+import { MIN_LISTINGS_FOR_INDEX } from '@/lib/seo-constants'
+
+export const revalidate = 3600
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 
 const GAME_SLUGS = ['warhammer-40k', 'age-of-sigmar', 'horus-heresy', 'the-old-world']
 
 const PRODUCTS_PER_SITEMAP = 1000
-
-// Minimum in-stock active listings to earn a sitemap entry.
-// Products with <2 listings provide no comparison value → waste crawl budget.
-const MIN_LISTINGS_FOR_SITEMAP = 2
 
 /** Encode characters that are invalid in XML sitemap URLs */
 function xmlSafeUrl(url: string): string {
@@ -29,7 +28,7 @@ async function countSitemapProducts(): Promise<number> {
         AND s.is_active = TRUE
         AND l.in_stock  = TRUE
       GROUP BY p.id
-      HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_SITEMAP}
+      HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_INDEX}
     ) sub
   `
   return Number(rows[0]?.count ?? 0)
@@ -100,7 +99,7 @@ export default async function sitemap({
       AND s.is_active = TRUE
       AND l.in_stock  = TRUE
     GROUP BY p.slug, p.name
-    HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_SITEMAP}
+    HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_INDEX}
     ORDER BY p.name ASC
     OFFSET ${skip}
     LIMIT ${PRODUCTS_PER_SITEMAP}

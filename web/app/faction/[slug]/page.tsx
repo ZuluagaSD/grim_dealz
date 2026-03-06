@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import ProductCard from '@/components/server/ProductCard'
 import { getFactionProducts, getFactions, GAME_SYSTEM_SLUG_MAP } from '@/lib/data'
+import { MIN_FACTION_PRODUCTS_FOR_INDEX } from '@/lib/seo-constants'
 
 export const revalidate = 21600
 export const dynamicParams = true
@@ -28,7 +29,7 @@ export async function generateMetadata({
 
   const products = await getFactionProducts(params.slug)
   // noindex factions with fewer than 3 products — thin listing pages waste crawl budget
-  const isThin = products.length < 3
+  const isThin = products.length < MIN_FACTION_PRODUCTS_FOR_INDEX
 
   return {
     title: `${factionName} Warhammer Prices — Compare Retailers`,

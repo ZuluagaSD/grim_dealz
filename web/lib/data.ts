@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { ProductType } from '@prisma/client'
 import { prisma } from './prisma'
+import { MIN_FACTION_PRODUCTS_FOR_INDEX } from './seo-constants'
 import type {
   ProductWithListings,
   GetDealsOptions,
@@ -505,7 +506,7 @@ export const getFactionsWithListings = cache(
           return { ...f, productCount: count }
         })
       )
-      return factsWithListings.filter((f) => f.productCount > 0)
+      return factsWithListings.filter((f) => f.productCount >= MIN_FACTION_PRODUCTS_FOR_INDEX)
     },
     ['factions-with-listings'],
     { revalidate: 86400, tags: ['products'] }

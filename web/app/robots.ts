@@ -1,9 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { prisma } from '@/lib/prisma'
+import { MIN_LISTINGS_FOR_INDEX } from '@/lib/seo-constants'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 const PRODUCTS_PER_SITEMAP = 1000
-const MIN_LISTINGS_FOR_SITEMAP = 2
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   // Count products with 2+ in-stock listings — must match sitemap.ts logic
@@ -17,7 +17,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         AND s.is_active = TRUE
         AND l.in_stock  = TRUE
       GROUP BY p.id
-      HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_SITEMAP}
+      HAVING COUNT(*) >= ${MIN_LISTINGS_FOR_INDEX}
     ) sub
   `
   const productCount = Number(rows[0]?.count ?? 0)
