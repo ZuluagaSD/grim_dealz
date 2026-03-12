@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { prisma } from '@/lib/prisma'
 import { MIN_LISTINGS_FOR_INDEX } from '@/lib/seo-constants'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 const PRODUCTS_PER_SITEMAP = 1000
 
 export default async function robots(): Promise<MetadataRoute.Robots> {

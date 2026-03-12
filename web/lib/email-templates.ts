@@ -109,7 +109,7 @@ function buildChartUrl(history: { date: string; price: number }[], gwRrp: number
   return `https://quickchart.io/chart?c=${encoded}&w=540&h=200&bkg=${encodeURIComponent(COLORS.inkCard)}`
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 export function welcomeAlertEmail(
   product: AlertEmailProduct,

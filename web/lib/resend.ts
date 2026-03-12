@@ -13,4 +13,4 @@ export const FROM_EMAIL =
   process.env.EMAIL_FROM ?? 'GrimDealz <alerts@grimdealz.com>'
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'

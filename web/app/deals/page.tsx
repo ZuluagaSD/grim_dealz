@@ -4,7 +4,7 @@ import Link from 'next/link'
 import ProductCard from '@/components/server/ProductCard'
 import { getDeals, GAME_SYSTEM_MAP } from '@/lib/data'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 export const revalidate = 3600
 

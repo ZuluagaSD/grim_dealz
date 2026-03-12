@@ -12,7 +12,7 @@ import { MIN_LISTINGS_FOR_INDEX } from '@/lib/seo-constants'
 import type { ProductWithListings, SerializedListing } from '@/lib/types'
 import { formatPrice } from '@/lib/format'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
 
 function buildProductSchema(
   product: ProductWithListings,
