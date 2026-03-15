@@ -20,10 +20,24 @@ export async function generateMetadata({
   searchParams: SearchParams
 }): Promise<Metadata> {
   const window = searchParams.window === '24h' ? 'Daily' : searchParams.window === '7d' ? 'Weekly' : ''
+  const ogTitle = window ? `${window} Price Drops` : 'Best Warhammer Deals'
+  const ogDesc = 'Find the best discounts on Warhammer miniatures, paints, and books across 10+ authorized US retailers.'
+
   return {
-    title: window ? `${window} Price Drops` : 'Best Deals',
-    description: 'Find the best discounts on Warhammer miniatures, paints, and books across 10+ authorized US retailers.',
+    title: ogTitle,
+    description: ogDesc,
     alternates: { canonical: '/deals' },
+    openGraph: {
+      type: 'website',
+      siteName: 'GrimDealz',
+      title: ogTitle,
+      description: ogDesc,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: ogDesc,
+    },
   }
 }
 

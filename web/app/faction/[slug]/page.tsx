@@ -31,11 +31,25 @@ export async function generateMetadata({
   // noindex factions with fewer than 3 products — thin listing pages waste crawl budget
   const isThin = products.length < MIN_FACTION_PRODUCTS_FOR_INDEX
 
+  const ogTitle = `${factionName} Warhammer Prices — Compare Retailers`
+  const ogDesc = `Compare ${factionName} Warhammer prices across 10+ authorized US retailers. Find the best deals and save up to 25% off GW RRP.`
+
   return {
-    title: `${factionName} Warhammer Prices — Compare Retailers`,
-    description: `Compare ${factionName} Warhammer prices across 10+ authorized US retailers. Find the best deals and save up to 25% off GW RRP.`,
+    title: ogTitle,
+    description: ogDesc,
     alternates: {
       canonical: `/faction/${params.slug}`,
+    },
+    openGraph: {
+      type: 'website',
+      siteName: 'GrimDealz',
+      title: ogTitle,
+      description: ogDesc,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: ogDesc,
     },
     ...(isThin && { robots: { index: false, follow: true } }),
   }

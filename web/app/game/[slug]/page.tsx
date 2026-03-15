@@ -25,10 +25,24 @@ export async function generateMetadata({
   const products = await getGameSystemProducts(params.slug)
   const hasProducts = products.length > 0
 
+  const ogTitle = `${gameName} Prices — Compare All Products`
+  const ogDesc = `Compare all ${gameName} Warhammer prices across 10+ authorized US retailers. Browse by faction and find the best deals.`
+
   return {
-    title: `${gameName} Prices — Compare All Products`,
-    description: `Compare all ${gameName} Warhammer prices across 10+ authorized US retailers. Browse by faction and find the best deals.`,
+    title: ogTitle,
+    description: ogDesc,
     alternates: { canonical: `/game/${params.slug}` },
+    openGraph: {
+      type: 'website',
+      siteName: 'GrimDealz',
+      title: ogTitle,
+      description: ogDesc,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: ogDesc,
+    },
     // noindex game pages with no products — thin content
     ...(!hasProducts && { robots: { index: false, follow: true } }),
   }

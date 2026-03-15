@@ -22,10 +22,24 @@ export async function generateMetadata({
   const gameName = GAME_SYSTEM_MAP[params.gameSystem]
   if (!gameName) return {}
 
+  const ogTitle = `${gameName} Deals — Best Prices`
+  const ogDesc = `Find the best ${gameName} deals across 10+ authorized US retailers. Compare prices and save up to 25% off GW RRP.`
+
   return {
-    title: `${gameName} Deals — Best Prices`,
-    description: `Find the best ${gameName} deals across 10+ authorized US retailers. Compare prices and save up to 25% off GW RRP.`,
+    title: ogTitle,
+    description: ogDesc,
     alternates: { canonical: `/deals/${params.gameSystem}` },
+    openGraph: {
+      type: 'website',
+      siteName: 'GrimDealz',
+      title: ogTitle,
+      description: ogDesc,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: ogDesc,
+    },
   }
 }
 

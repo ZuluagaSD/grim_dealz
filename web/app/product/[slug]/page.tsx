@@ -147,11 +147,29 @@ export async function generateMetadata({
   // Once scrapers add listings, next ISR revalidation removes the tag.
   const inStockCount = product.listings.filter((l) => l.inStock).length
 
+  const ogTitle = `${product.name} — Best Price`
+  const ogImage = product.imageUrl
+    ? { url: product.imageUrl, width: 920, height: 950, alt: product.name }
+    : { url: '/og-default.png', width: 1200, height: 630, alt: 'GrimDealz' }
+
   return {
-    title: `${product.name} — Best Price`,
+    title: ogTitle,
     description: desc,
     alternates: {
       canonical: `/product/${product.slug}`,
+    },
+    openGraph: {
+      type: 'website',
+      siteName: 'GrimDealz',
+      title: ogTitle,
+      description: desc,
+      images: [ogImage],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: desc,
+      images: [ogImage.url],
     },
     ...(inStockCount < MIN_LISTINGS_FOR_INDEX && { robots: { index: false, follow: true } }),
   }
