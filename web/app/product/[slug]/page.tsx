@@ -106,31 +106,28 @@ function ProductSummary({
   return (
     <div className="space-y-2 text-sm leading-relaxed text-bone-muted">
       <p>
-        Looking for the cheapest price on {name}?
-        {' '}The Games Workshop RRP is ${gwRrpUsd.toFixed(2)}
-        {faction ? ` for this ${faction}` : ''}{gameSystem ? ` ${gameSystem}` : ''} kit.
+        {name} retails for ${gwRrpUsd.toFixed(2)} at Games Workshop
+        {faction ? ` (${faction}` : ''}{gameSystem ? `${faction ? ', ' : ' ('}${gameSystem})` : faction ? ')' : ''}.
         {storeCount > 0
-          ? ` GrimDealz found it listed at ${storeCount} authorized US retailer${storeCount !== 1 ? 's' : ''}${inStockCount > 0 ? `, with ${inStockCount} currently in stock` : ''}.`
-          : ' No authorized retailers currently list this product.'}
+          ? ` ${storeCount} authorized retailer${storeCount !== 1 ? 's' : ''} ${storeCount !== 1 ? 'carry' : 'carries'} it in the US${inStockCount > 0 ? ` and ${inStockCount} ${inStockCount !== 1 ? 'have' : 'has'} it in stock` : ''}.`
+          : ` None of the retailers we track currently list it.`}
       </p>
       {cheapestPrice && cheapestStore && savings > 0 ? (
         <p>
-          The best price right now is <strong className="text-green-400">${cheapestPrice.toFixed(2)} at {cheapestStore}</strong>,
-          saving you ${savings.toFixed(2)} ({discountPct}% off GW RRP).
-          All prices are automatically verified every 4 hours across 10+ authorized US retailers,
-          so you always see the most up-to-date deals.
+          Cheapest right now: <strong className="text-green-400">${cheapestPrice.toFixed(2)} at {cheapestStore}</strong>{' '}
+          — that{`'`}s ${savings.toFixed(2)} less than GW ({discountPct}% off).
+          Prices update every 4 hours.
         </p>
       ) : cheapestPrice && cheapestStore ? (
         <p>
-          Currently available at ${cheapestPrice.toFixed(2)} from {cheapestStore}.
-          Prices are verified every 4 hours.
+          Available at ${cheapestPrice.toFixed(2)} from {cheapestStore}.
+          Prices update every 4 hours.
         </p>
       ) : null}
       {storeCount > 1 && (
         <p>
-          Use the price comparison table below to see all available retailers,
-          stock status, and price history for {name}.
-          {faction ? ` Browse more ${faction} deals on our faction page.` : ''}
+          The table below has all {storeCount} retailers with current prices and stock.
+          {faction ? ` More ${faction} kits on the faction page.` : ''}
         </p>
       )}
     </div>
@@ -153,15 +150,15 @@ export async function generateMetadata({
   if (!product) return {}
 
   const cheapest = product.listings[0]
-  const desc = cheapest
-    ? `Buy ${product.name} from $${Number(cheapest.currentPrice).toFixed(2)} — ${Math.round(Number(cheapest.discountPct))}% off GW RRP. Compare 10+ authorized US retailers.`
-    : `Compare prices for ${product.name} across 10+ authorized US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`
+    const desc = cheapest
+    ? `${product.name} from $${Number(cheapest.currentPrice).toFixed(2)} (${Math.round(Number(cheapest.discountPct))}% off GW RRP). Prices compared across ${product.listings.length} US retailers.`
+    : `${product.name} price comparison across US Warhammer retailers. GW RRP: $${Number(product.gwRrpUsd).toFixed(2)}.`
 
   // noindex product pages with <2 in-stock listings — thin / no comparison value.
   // Once scrapers add listings, next ISR revalidation removes the tag.
   const inStockCount = product.listings.filter((l) => l.inStock).length
 
-  const ogTitle = `${product.name} — Best Price`
+  const ogTitle = `${product.name} — Price Comparison`
   const ogImage = product.imageUrl
     ? { url: product.imageUrl, width: 920, height: 950, alt: product.name }
     : { url: '/og-default.png', width: 1200, height: 630, alt: 'GrimDealz' }
