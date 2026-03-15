@@ -106,17 +106,31 @@ function ProductSummary({
   return (
     <div className="space-y-2 text-sm leading-relaxed text-bone-muted">
       <p>
-        {name} has a Games Workshop RRP of ${gwRrpUsd.toFixed(2)}
-        {faction ? ` and belongs to the ${faction} faction` : ''}
-        {gameSystem ? ` in ${gameSystem}` : ''}.
+        Looking for the cheapest price on {name}?
+        {' '}The Games Workshop RRP is ${gwRrpUsd.toFixed(2)}
+        {faction ? ` for this ${faction}` : ''}{gameSystem ? ` ${gameSystem}` : ''} kit.
         {storeCount > 0
-          ? ` We found it listed at ${storeCount} authorized US retailer${storeCount !== 1 ? 's' : ''}${inStockCount > 0 ? `, with ${inStockCount} currently showing in stock` : ''}.`
-          : ' No retailers currently list this product.'}
+          ? ` GrimDealz found it listed at ${storeCount} authorized US retailer${storeCount !== 1 ? 's' : ''}${inStockCount > 0 ? `, with ${inStockCount} currently in stock` : ''}.`
+          : ' No authorized retailers currently list this product.'}
       </p>
-      {cheapestPrice && cheapestStore && savings > 0 && (
+      {cheapestPrice && cheapestStore && savings > 0 ? (
         <p>
-          The lowest price is ${cheapestPrice.toFixed(2)} at {cheapestStore}, saving you ${savings.toFixed(2)} ({discountPct}% off RRP).
-          Prices are verified by our scrapers every 4 hours.
+          The best price right now is <strong className="text-green-400">${cheapestPrice.toFixed(2)} at {cheapestStore}</strong>,
+          saving you ${savings.toFixed(2)} ({discountPct}% off GW RRP).
+          All prices are automatically verified every 4 hours across 10+ authorized US retailers,
+          so you always see the most up-to-date deals.
+        </p>
+      ) : cheapestPrice && cheapestStore ? (
+        <p>
+          Currently available at ${cheapestPrice.toFixed(2)} from {cheapestStore}.
+          Prices are verified every 4 hours.
+        </p>
+      ) : null}
+      {storeCount > 1 && (
+        <p>
+          Use the price comparison table below to see all available retailers,
+          stock status, and price history for {name}.
+          {faction ? ` Browse more ${faction} deals on our faction page.` : ''}
         </p>
       )}
     </div>
@@ -309,23 +323,28 @@ export default async function ProductPage({
         </div>
       </div>
 
-      {/* Product Summary — unique text content for SEO */}
+      {/* Price Summary — unique data-driven content for SEO (always shown) */}
       <section className="mt-10 rounded-lg border border-ink-rim bg-ink-card p-6">
-        {product.description ? (
-          <p className="text-sm leading-relaxed text-bone-muted">{product.description}</p>
-        ) : (
-          <ProductSummary
-            name={product.name}
-            faction={product.faction}
-            gameSystem={product.gameSystem}
-            gwRrpUsd={Number(product.gwRrpUsd)}
-            storeCount={listings.length}
-            cheapestPrice={cheapest?.currentPrice ?? null}
-            cheapestStore={cheapest?.storeName ?? null}
-            inStockCount={listings.filter((l) => l.inStock).length}
-          />
-        )}
+        <h2 className="mb-3 text-lg font-bold text-bone">{product.name} — Price Summary</h2>
+        <ProductSummary
+          name={product.name}
+          faction={product.faction}
+          gameSystem={product.gameSystem}
+          gwRrpUsd={Number(product.gwRrpUsd)}
+          storeCount={listings.length}
+          cheapestPrice={cheapest?.currentPrice ?? null}
+          cheapestStore={cheapest?.storeName ?? null}
+          inStockCount={listings.filter((l) => l.inStock).length}
+        />
       </section>
+
+      {/* GW product description — supplementary detail */}
+      {product.description && (
+        <section className="mt-6 rounded-lg border border-ink-rim bg-ink-card p-6">
+          <h2 className="mb-3 text-lg font-bold text-bone">Product Description</h2>
+          <p className="text-sm leading-relaxed text-bone-muted">{product.description}</p>
+        </section>
+      )}
 
       {/* Price Comparison Table */}
       <div className="mt-10">
