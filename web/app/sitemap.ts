@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { prisma } from '@/lib/prisma'
 import { getFactionsWithListings } from '@/lib/data'
+import { getAllPosts } from '@/lib/blog'
 import { MIN_LISTINGS_FOR_INDEX } from '@/lib/seo-constants'
 
 export const revalidate = 3600
@@ -83,7 +84,17 @@ export default async function sitemap({
       priority: 0.8,
     }))
 
-    return [...staticPages, ...gamePages, ...gameDealsPages, ...factionPages]
+    const blogPages: MetadataRoute.Sitemap = [
+      { url: `${SITE_URL}/blog`, changeFrequency: 'weekly' as const, priority: 0.7 },
+      ...getAllPosts().map((post) => ({
+        url: `${SITE_URL}/blog/${post.slug}`,
+        changeFrequency: 'monthly' as const,
+        priority: 0.6,
+        lastModified: new Date(post.updatedAt ?? post.publishedAt),
+      })),
+    ]
+
+    return [...staticPages, ...gamePages, ...gameDealsPages, ...factionPages, ...blogPages]
   }
 
   // Product pages — only products with 2+ in-stock listings from active stores.

@@ -68,6 +68,9 @@ export default function RootLayout({
                 <Link href="/factions" className="text-sm font-medium text-bone-muted transition-colors hover:text-gold">
                   Factions
                 </Link>
+                <Link href="/blog" className="text-sm font-medium text-bone-muted transition-colors hover:text-gold">
+                  Blog
+                </Link>
                 <Link href="/battleforce-tracker" className="text-sm font-medium text-bone-muted transition-colors hover:text-gold">
                   Battleforce Tracker
                 </Link>
@@ -100,6 +103,7 @@ export default function RootLayout({
               <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-bone-muted">
                 <Link href="/deals" className="transition-colors hover:text-gold">Deals</Link>
                 <Link href="/factions" className="transition-colors hover:text-gold">Factions</Link>
+                <Link href="/blog" className="transition-colors hover:text-gold">Blog</Link>
                 <Link href="/battleforce-tracker" className="transition-colors hover:text-gold">Battleforce Tracker</Link>
                 <Link href="/search" className="transition-colors hover:text-gold">Search</Link>
                 <Link href="/privacy" className="transition-colors hover:text-gold">Privacy</Link>
