@@ -126,7 +126,7 @@ One wrinkle: some Combat Patrols include models you can't buy separately (exclus
 Factions with expensive centerpiece models (Orks with vehicles, Death Guard with Plagueburst Crawlers, Custodes with their premium infantry) tend to have the best savings. Meanwhile, factions where every kit is $35-45 infantry see smaller discounts because there's less room to compress the price.`,
       },
       {
-        heading: 'When a Combat Patrol isn't worth it',
+        heading: "When a Combat Patrol isn't worth it",
         body: `If you already own some of the kits in a patrol, the value drops — you're paying for duplicates. In that case, buying the remaining individual kits at discount from a retailer like Discount Games Inc or Frontline Gaming might be cheaper.
 
 Also, check if the patrol gives you models you'd actually use. A great "savings" number doesn't matter if half the box sits unbuilt because you don't want those units in your army. The best patrol is the one where you'd run every model it includes.`,
