@@ -20,7 +20,12 @@ from datetime import datetime, timezone
 import psycopg
 from dotenv import load_dotenv
 
-from .catalog import RawProduct, algolia_hit_to_raw_product, fetch_all_algolia_products
+from .catalog import (
+    RawProduct,
+    algolia_hit_to_raw_product,
+    fetch_all_algolia_products,
+    fetch_regional_prices,
+)
 
 load_dotenv()
 
@@ -58,12 +63,14 @@ async def upsert_catalog_product(
             """
             INSERT INTO products (
                 id, slug, name, gw_item_number, faction, game_system,
-                category, product_type, gw_rrp_usd, image_url, gw_url,
+                category, product_type, gw_rrp_usd, gw_rrp_gbp, gw_rrp_eur,
+                gw_rrp_aud, gw_rrp_cad, image_url, gw_url,
                 description, is_active, created_at, updated_at
             )
             VALUES (
                 gen_random_uuid(), %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
+                %s, %s, %s, %s,
                 %s, TRUE, NOW(), NOW()
             )
             ON CONFLICT (gw_item_number) DO UPDATE SET
@@ -72,6 +79,10 @@ async def upsert_catalog_product(
                 game_system = EXCLUDED.game_system,
                 product_type = EXCLUDED.product_type,
                 gw_rrp_usd = EXCLUDED.gw_rrp_usd,
+                gw_rrp_gbp = COALESCE(EXCLUDED.gw_rrp_gbp, products.gw_rrp_gbp),
+                gw_rrp_eur = COALESCE(EXCLUDED.gw_rrp_eur, products.gw_rrp_eur),
+                gw_rrp_aud = COALESCE(EXCLUDED.gw_rrp_aud, products.gw_rrp_aud),
+                gw_rrp_cad = COALESCE(EXCLUDED.gw_rrp_cad, products.gw_rrp_cad),
                 image_url = EXCLUDED.image_url,
                 gw_url = EXCLUDED.gw_url,
                 description = COALESCE(EXCLUDED.description, products.description),
@@ -88,6 +99,10 @@ async def upsert_catalog_product(
                 product.game_system or product.product_type or "other",  # category fallback
                 product.product_type,
                 product.gw_rrp_usd,
+                product.gw_rrp_gbp,
+                product.gw_rrp_eur,
+                product.gw_rrp_aud,
+                product.gw_rrp_cad,
                 product.image_url,
                 product.gw_url,
                 product.description,
@@ -131,12 +146,24 @@ async def sync_gw_catalog(log=None) -> CatalogStats:
     stats.total_algolia_hits = len(all_hits)
     _log.info("Fetched %d Algolia hits", stats.total_algolia_hits)
 
-    # 2. Parse into RawProducts
+    # 2. Fetch regional prices (GBP, EUR, AUD, CAD) in parallel
+    _log.info("Fetching regional prices...")
+    regional_prices = await fetch_regional_prices(log=_log)
+
+    # 3. Parse into RawProducts and merge regional prices
     products: list[RawProduct] = []
     for hit in all_hits:
         try:
             product = algolia_hit_to_raw_product(hit)
             if product:
+                # Merge regional prices by objectID
+                oid = hit.get("objectID", "")
+                if oid in regional_prices:
+                    rp = regional_prices[oid]
+                    product.gw_rrp_gbp = rp.get("gw_rrp_gbp")
+                    product.gw_rrp_eur = rp.get("gw_rrp_eur")
+                    product.gw_rrp_aud = rp.get("gw_rrp_aud")
+                    product.gw_rrp_cad = rp.get("gw_rrp_cad")
                 products.append(product)
             else:
                 stats.skipped += 1

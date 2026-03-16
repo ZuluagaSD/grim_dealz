@@ -157,6 +157,10 @@ class RawProduct:
     image_url: str | None
     gw_url: str | None
     description: str | None = None
+    gw_rrp_gbp: float | None = None
+    gw_rrp_eur: float | None = None
+    gw_rrp_aud: float | None = None
+    gw_rrp_cad: float | None = None
 
 
 # ─────────────────────────────────────────
@@ -477,3 +481,80 @@ async def fetch_all_algolia_products(log=None) -> list[dict]:
 
     _log.info("Algolia fetch complete: %d unique products", len(seen))
     return list(seen.values())
+
+
+# ─────────────────────────────────────────
+# Regional pricing — fetch GBP/EUR/AUD/CAD from other Algolia indices
+# ─────────────────────────────────────────
+
+_REGIONAL_INDICES = {
+    "gw_rrp_gbp": "prod-lazarus-product-en-gb",
+    "gw_rrp_eur": "prod-lazarus-product-en-eu",
+    "gw_rrp_aud": "prod-lazarus-product-en-au",
+    "gw_rrp_cad": "prod-lazarus-product-en-ca",
+}
+
+
+async def fetch_regional_prices(log=None) -> dict[str, dict[str, float]]:
+    """Fetch prices from regional Algolia indices.
+
+    Returns a dict keyed by objectID, with values like:
+      {"gw_rrp_gbp": 40.0, "gw_rrp_eur": 51.5, "gw_rrp_aud": 110.0, "gw_rrp_cad": 78.0}
+    """
+    _log = log or logger
+    # objectID → {field: price}
+    prices: dict[str, dict[str, float]] = {}
+
+    headers = {
+        "X-Algolia-Application-Id": ALGOLIA_APP_ID,
+        "X-Algolia-API-Key": ALGOLIA_API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for field_name, index_name in _REGIONAL_INDICES.items():
+            query_url = (
+                f"https://{ALGOLIA_APP_ID}-dsn.algolia.net"
+                f"/1/indexes/{index_name}/query"
+            )
+            region_count = 0
+
+            # Use same facet partition strategy as main fetch
+            filters: list[str] = [
+                f"GameSystemsRoot.lvl0:\"{gs}\"" for gs in _GAME_SYSTEM_FACETS
+            ]
+            not_clause = " AND ".join(
+                f"NOT GameSystemsRoot.lvl0:\"{gs}\"" for gs in _GAME_SYSTEM_FACETS
+            )
+            filters.append(not_clause)
+
+            for facet_filter in filters:
+                page = 0
+                while True:
+                    body = {
+                        "params": f"hitsPerPage=1000&query=&page={page}"
+                                  f"&attributesToRetrieve=objectID,price,ctPrice",
+                        "filters": facet_filter,
+                    }
+                    resp = await client.post(query_url, headers=headers, json=body)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    hits = data.get("hits", [])
+
+                    for hit in hits:
+                        oid = hit["objectID"]
+                        price = hit.get("price")
+                        if price is not None:
+                            if oid not in prices:
+                                prices[oid] = {}
+                            prices[oid][field_name] = float(price)
+                            region_count += 1
+
+                    page += 1
+                    if page >= data.get("nbPages", 0) or not hits:
+                        break
+
+            _log.info("Regional prices [%s]: %d products", field_name, region_count)
+
+    _log.info("Regional price fetch complete: %d products with regional data", len(prices))
+    return prices
