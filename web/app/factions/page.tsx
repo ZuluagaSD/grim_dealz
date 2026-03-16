@@ -1,7 +1,7 @@
 // Factions hub — ISR 24h (faction list rarely changes)
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getFactions } from '@/lib/data'
+import { getFactionsWithListings } from '@/lib/data'
 import type { FactionSummary } from '@/lib/types'
 
 export const revalidate = 86400
@@ -34,7 +34,7 @@ function groupByGameSystem(factions: FactionSummary[]): Map<string, FactionSumma
 }
 
 export default async function FactionsPage() {
-  const factions = await getFactions()
+  const factions = await getFactionsWithListings()
   const grouped = groupByGameSystem(factions)
 
   const breadcrumbSchema = {
