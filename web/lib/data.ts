@@ -15,6 +15,10 @@ import type {
 
 export { ProductType }
 
+// Default currency for the site — filters listings to one region.
+// When we add a region switcher, this becomes a parameter.
+const DEFAULT_CURRENCY = 'USD'
+
 // Stable map of game system slugs → display names (must match DB exactly)
 export const GAME_SYSTEM_MAP: Record<string, string> = {
   'warhammer-40k': 'Warhammer 40,000',
@@ -108,7 +112,7 @@ export const getProduct = cache(
         where: { slug, isActive: true },
         include: {
           listings: {
-            where: { store: { isActive: true } },
+            where: { store: { isActive: true }, currency: DEFAULT_CURRENCY },
             include: { store: true },
             orderBy: [{ inStock: 'desc' }, { currentPrice: 'asc' }],
           },
@@ -127,7 +131,7 @@ export const getProductListings = cache(
         where: { slug, isActive: true },
         include: {
           listings: {
-            where: { store: { isActive: true } },
+            where: { store: { isActive: true }, currency: DEFAULT_CURRENCY },
             include: { store: true },
             orderBy: [{ inStock: 'desc' }, { currentPrice: 'asc' }],
           },
@@ -171,6 +175,7 @@ export const getDeals = cache(
               discountPct: { gte: minDiscountPct },
               ...(inStockOnly && { inStock: true }),
               store: { isActive: true },
+              currency: DEFAULT_CURRENCY,
               ...(droppedSince && { lastScraped: { gte: droppedSince } }),
             },
           },
@@ -181,6 +186,7 @@ export const getDeals = cache(
               discountPct: { gte: minDiscountPct },
               ...(inStockOnly && { inStock: true }),
               store: { isActive: true },
+              currency: DEFAULT_CURRENCY,
             },
             include: { store: true },
             orderBy: { currentPrice: 'asc' },
@@ -245,7 +251,7 @@ export const getFactionProducts = cache(
         where: { isActive: true, faction },
         include: {
           listings: {
-            where: { store: { isActive: true } },
+            where: { store: { isActive: true }, currency: DEFAULT_CURRENCY },
             include: { store: true },
             orderBy: { currentPrice: 'asc' },
             take: 1,
@@ -336,6 +342,7 @@ export const getPriceHistory = cache(
         WHERE  p.slug = ${slug}
           AND  p.is_active = TRUE
           AND  s.is_active = TRUE
+          AND  l.currency = ${DEFAULT_CURRENCY}
           AND  ph.scraped_at >= NOW() - INTERVAL '90 days'
         ORDER  BY ph.scraped_at ASC
       `
@@ -401,7 +408,7 @@ export const getProductsByType = cache(
         where: { isActive: true, productType },
         include: {
           listings: {
-            where: { store: { isActive: true } },
+            where: { store: { isActive: true }, currency: DEFAULT_CURRENCY },
             include: { store: true },
             orderBy: { currentPrice: 'asc' },
             take: 1,
@@ -433,7 +440,7 @@ export const getGameSystemProducts = cache(
         where: { isActive: true, gameSystem },
         include: {
           listings: {
-            where: { store: { isActive: true } },
+            where: { store: { isActive: true }, currency: DEFAULT_CURRENCY },
             include: { store: true },
             orderBy: { currentPrice: 'asc' },
             take: 1,
@@ -468,11 +475,11 @@ export const getRelatedProducts = cache(
           isActive: true,
           faction,
           slug: { not: excludeSlug },
-          listings: { some: { store: { isActive: true } } },
+          listings: { some: { store: { isActive: true }, currency: DEFAULT_CURRENCY } },
         },
         include: {
           listings: {
-            where: { store: { isActive: true } },
+            where: { store: { isActive: true }, currency: DEFAULT_CURRENCY },
             include: { store: true },
             orderBy: { currentPrice: 'asc' },
             take: 1,
@@ -501,7 +508,7 @@ export const getFactionsWithListings = cache(
             where: {
               isActive: true,
               faction: f.faction,
-              listings: { some: { store: { isActive: true } } },
+              listings: { some: { store: { isActive: true }, currency: DEFAULT_CURRENCY } },
             },
           })
           return { ...f, withListings: listingCount }

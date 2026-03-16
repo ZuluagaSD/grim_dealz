@@ -117,6 +117,7 @@ model Listing {
   inStock         Boolean     @default(true) @map("in_stock")
   stockStatus     StockStatus @default(in_stock) @map("stock_status")
   affiliateUrl    String?     @map("affiliate_url")
+  currency        String      @default("USD")
   lastScraped     DateTime?   @map("last_scraped")
   lastCheckedAt   DateTime?   @map("last_checked_at")
 
