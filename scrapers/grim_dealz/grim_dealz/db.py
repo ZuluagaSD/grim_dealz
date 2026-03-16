@@ -124,6 +124,11 @@ async def _upsert_batch_with_retry(
                     msg = f"{result.gw_item_number}: {exc}"
                     stats.errors.append(msg)
                     logger.exception("[%s] Error upserting %s", store_slug, result.gw_item_number)
+                    # Rollback the failed transaction so subsequent rows can proceed
+                    try:
+                        await conn.rollback()
+                    except Exception:
+                        pass
             
             return conn  # Success
             

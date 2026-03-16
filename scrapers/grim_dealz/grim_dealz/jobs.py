@@ -14,6 +14,7 @@ scrape_job = define_asset_job(
         "discount_games_inc_listings",
         "frontline_gaming_listings",
         "game_nerdz_listings",
+        "goblin_gaming_listings",
         "revalidate_cache",
         "price_alert_notifications",
     ],
