@@ -95,7 +95,7 @@ export default async function FactionsPage() {
                         {f.faction}
                       </p>
                       <p className="mt-1 text-xs text-bone-faint">
-                        {f.productCount} product{f.productCount !== 1 ? 's' : ''}
+                        {f.productCount} product{f.productCount !== 1 ? 's' : ''} · {f.withListings} on sale
                       </p>
                     </Link>
                   ))}

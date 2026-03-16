@@ -383,6 +383,7 @@ export const getFactions = cache(
           gameSystem: g.gameSystem,
           slug: g.faction!.toLowerCase().replace(/\s+/g, '-'),
           productCount: g._count._all,
+          withListings: 0,
           cheapestDiscount: 0,
         }))
         .sort((a, b) => a.faction.localeCompare(b.faction))
@@ -496,17 +497,17 @@ export const getFactionsWithListings = cache(
       // Only return factions that have at least one product with an active listing
       const factsWithListings = await Promise.all(
         factions.map(async (f) => {
-          const count = await prisma.product.count({
+          const listingCount = await prisma.product.count({
             where: {
               isActive: true,
               faction: f.faction,
               listings: { some: { store: { isActive: true } } },
             },
           })
-          return { ...f, productCount: count }
+          return { ...f, withListings: listingCount }
         })
       )
-      return factsWithListings.filter((f) => f.productCount >= MIN_FACTION_PRODUCTS_FOR_INDEX)
+      return factsWithListings.filter((f) => f.withListings >= MIN_FACTION_PRODUCTS_FOR_INDEX)
     },
     ['factions-with-listings'],
     { revalidate: 86400, tags: ['products'] }

@@ -76,7 +76,8 @@ export type FactionSummary = {
   faction: string
   gameSystem: string | null
   slug: string // faction slug for /faction/[slug] route
-  productCount: number
+  productCount: number // total products in this faction
+  withListings: number // products with active retailer listings
   cheapestDiscount: number // highest discount_pct available
 }
 
