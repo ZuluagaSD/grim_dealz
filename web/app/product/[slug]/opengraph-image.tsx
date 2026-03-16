@@ -1,8 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element, jsx-a11y/alt-text */
 import { ImageResponse } from 'next/og'
 import { getProduct } from '@/lib/data'
 
-export const runtime = 'edge'
+// Use Node.js runtime — Prisma doesn't work on edge
 export const revalidate = 14400
 export const contentType = 'image/png'
 export const size = { width: 1200, height: 630 }
@@ -28,7 +28,7 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
   if (!product) {
     return new ImageResponse(
       (
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0c0c0c', color: '#e8e0d0', fontSize: 48, fontFamily: 'Inter' }}>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0c0c0c', color: '#e8e0d0', fontSize: 48 }}>
           Product not found
         </div>
       ),
@@ -36,19 +36,18 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
     )
   }
 
-  const usdListings = product.listings.filter(
-    (l) => {
-      const currency = l.store?.currency ?? (l as Record<string, unknown>).currency ?? 'USD'
-      return currency === 'USD'
-    }
-  )
+  const usdListings = product.listings.filter((l) => {
+    const currency = l.store?.currency ?? (l as Record<string, unknown>).currency ?? 'USD'
+    return currency === 'USD'
+  })
   const cheapest = usdListings[0]
   const gwRrp = Number(product.gwRrpUsd)
   const cheapestPrice = cheapest ? Number(cheapest.currentPrice) : null
   const savings = cheapestPrice ? gwRrp - cheapestPrice : 0
-  const discountPct = cheapestPrice ? Math.round((savings / gwRrp) * 100) : 0
+  const discountPct = cheapestPrice && gwRrp > 0 ? Math.round((savings / gwRrp) * 100) : 0
   const storeName = cheapest?.store?.name ?? null
   const storeCount = usdListings.length
+  const factionGame = [product.faction, product.gameSystem].filter(Boolean).join(' · ')
 
   const [cinzelData, interData] = await Promise.all([
     getGoogleFontUrl('Cinzel', 700).then(loadFont),
@@ -59,7 +58,7 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
   let productImageSrc: string | null = null
   if (product.imageUrl) {
     try {
-      const imgRes = await fetch(product.imageUrl)
+      const imgRes = await fetch(product.imageUrl, { next: { revalidate: 86400 } })
       if (imgRes.ok) {
         const buf = await imgRes.arrayBuffer()
         const base64 = Buffer.from(buf).toString('base64')
@@ -67,7 +66,7 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
         productImageSrc = `data:${ct};base64,${base64}`
       }
     } catch {
-      // Fall back to no image
+      // No image fallback
     }
   }
 
@@ -104,8 +103,8 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
           ) : (
             <div
               style={{
-                width: 340,
-                height: 340,
+                width: '340px',
+                height: '340px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -129,21 +128,21 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
             gap: '20px',
           }}
         >
-          {/* Game system / faction tag */}
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 20,
-              color: '#c9a84c',
-              fontFamily: 'Inter',
-              fontWeight: 600,
-              textTransform: 'uppercase' as const,
-              letterSpacing: '2px',
-              opacity: 0.8,
-            }}
-          >
-            {[product.faction, product.gameSystem].filter(Boolean).join(' · ')}
-          </div>
+          {/* Faction · Game System */}
+          {factionGame && (
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 20,
+                color: '#c9a84c',
+                fontFamily: 'Inter',
+                fontWeight: 600,
+                letterSpacing: '2px',
+              }}
+            >
+              {factionGame.toUpperCase()}
+            </div>
+          )}
 
           {/* Product name */}
           <div
@@ -154,45 +153,26 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
               fontWeight: 700,
               color: '#e8e0d0',
               lineHeight: 1.15,
-              maxHeight: '160px',
-              overflow: 'hidden',
             }}
           >
-            {product.name}
+            {product.name.length > 60 ? product.name.slice(0, 57) + '...' : product.name}
           </div>
 
           {/* Price row */}
           <div
             style={{
               display: 'flex',
-              alignItems: 'baseline',
+              alignItems: 'center',
               gap: '16px',
               marginTop: '8px',
             }}
           >
             {cheapestPrice ? (
               <>
-                <div
-                  style={{
-                    display: 'flex',
-                    fontSize: 56,
-                    fontFamily: 'Inter',
-                    fontWeight: 600,
-                    color: '#e8e0d0',
-                  }}
-                >
+                <div style={{ display: 'flex', fontSize: 56, fontFamily: 'Inter', fontWeight: 600, color: '#e8e0d0' }}>
                   ${cheapestPrice.toFixed(2)}
                 </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    fontSize: 28,
-                    fontFamily: 'Inter',
-                    fontWeight: 600,
-                    color: '#5a5248',
-                    textDecoration: 'line-through',
-                  }}
-                >
+                <div style={{ display: 'flex', fontSize: 28, fontFamily: 'Inter', fontWeight: 600, color: '#5a5248', textDecoration: 'line-through' }}>
                   ${gwRrp.toFixed(2)}
                 </div>
                 {discountPct > 0 && (
@@ -213,15 +193,7 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
                 )}
               </>
             ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  fontSize: 40,
-                  fontFamily: 'Inter',
-                  fontWeight: 600,
-                  color: '#a09880',
-                }}
-              >
+              <div style={{ display: 'flex', fontSize: 40, fontFamily: 'Inter', fontWeight: 600, color: '#a09880' }}>
                 RRP ${gwRrp.toFixed(2)}
               </div>
             )}
@@ -229,22 +201,12 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
 
           {/* Store info */}
           {storeName && (
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 20,
-                fontFamily: 'Inter',
-                fontWeight: 600,
-                color: '#a09880',
-              }}
-            >
-              {storeName}
-              {storeCount > 1 ? ` + ${storeCount - 1} more` : ''}
-              {' · Prices compared every 4h'}
+            <div style={{ display: 'flex', fontSize: 20, fontFamily: 'Inter', fontWeight: 600, color: '#a09880' }}>
+              {storeName}{storeCount > 1 ? ` + ${storeCount - 1} more` : ''} · Prices compared every 4h
             </div>
           )}
 
-          {/* GrimDealz branding */}
+          {/* Branding */}
           <div
             style={{
               display: 'flex',
@@ -254,28 +216,10 @@ export default async function OgImage({ params }: { params: { slug: string } }) 
               paddingTop: '16px',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 26,
-                fontFamily: 'Cinzel',
-                fontWeight: 700,
-                color: '#c9a84c',
-                letterSpacing: '3px',
-              }}
-            >
+            <div style={{ display: 'flex', fontSize: 26, fontFamily: 'Cinzel', fontWeight: 700, color: '#c9a84c', letterSpacing: '3px' }}>
               ⚔ GRIMDEALZ
             </div>
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 18,
-                fontFamily: 'Inter',
-                fontWeight: 600,
-                color: '#5a5248',
-                marginLeft: '8px',
-              }}
-            >
+            <div style={{ display: 'flex', fontSize: 18, fontFamily: 'Inter', fontWeight: 600, color: '#5a5248', marginLeft: '8px' }}>
               grimdealz.com
             </div>
           </div>
