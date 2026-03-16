@@ -22,7 +22,7 @@ import psycopg
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-MODEL = "claude-haiku-3-5-20241022"
+MODEL = "claude-3-haiku-20240307"
 API_URL = "https://api.anthropic.com/v1/messages"
 
 
