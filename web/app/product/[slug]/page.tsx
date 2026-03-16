@@ -159,8 +159,15 @@ export async function generateMetadata({
   const inStockCount = product.listings.filter((l) => l.inStock).length
 
   const ogTitle = `${product.name} — Price Comparison`
-  // Always use self-hosted OG image — GW's CDN blocks Twitter/social crawlers (content-length: 0)
-  const ogImage = { url: '/og-default.png', width: 1200, height: 630, alt: product.name }
+  // Dynamic OG image generated at /product/[slug]/opengraph-image
+  // Proxies GW product image through our edge function (GW CDN blocks social crawlers)
+  const ogImage = {
+    url: `/product/${product.slug}/opengraph-image`,
+    width: 1200,
+    height: 630,
+    alt: product.name,
+    type: 'image/png',
+  }
 
   return {
     title: ogTitle,
