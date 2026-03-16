@@ -97,6 +97,37 @@ WH40K_UMBRELLA_TERMS = frozenset({
     "generic",
 })
 
+# lvl1 terms that are NOT factions — these are unit role / navigation categories.
+# When we encounter these, we dig into lvl2 for the real faction.
+NON_FACTION_TERMS = frozenset({
+    "unit type",
+    "gaming rules",
+    "scenery",
+    "terrain",
+    "start here",
+    "ways to play",
+    "gameplay accessories",
+    "bases and accessories",
+    "accessories",
+    "rules",
+    "rules & army books",
+    "force organisation",
+    "vehicles",
+    "race",
+})
+
+# Umbrella groupings in lvl1 that contain real factions in lvl2
+UMBRELLA_FACTION_TERMS = frozenset({
+    "xenos armies",
+    "armies of chaos",
+    "armies of the imperium",
+    "armies of the old world",
+    "grand alliance order",
+    "grand alliance chaos",
+    "grand alliance death",
+    "grand alliance destruction",
+})
+
 # Faction-level terms that indicate non-product categories
 SKIP_FACTION_TERMS = frozenset({
     "event exclusive",
@@ -151,9 +182,16 @@ def _extract_gw_item_number(hit: dict) -> str | None:
 def _extract_game_system_faction(hit: dict) -> tuple[str | None, str | None]:
     """Parse game system and faction from Algolia's GameSystemsRoot hierarchy.
 
-    GameSystemsRoot.lvl0: ["Warhammer 40,000"]
-    GameSystemsRoot.lvl1: ["Warhammer 40,000 > Space Marines"]
-    GameSystemsRoot.lvl2: ["Warhammer 40,000 > Space Marines > Ultramarines"]
+    Algolia provides multi-level categorisation:
+      lvl0: ["Warhammer 40,000"]
+      lvl1: ["Warhammer 40,000 > Unit Type", "Warhammer 40,000 > Xenos Armies"]
+      lvl2: ["Warhammer 40,000 > Xenos Armies > Aeldari", ...]
+
+    Strategy:
+      1. Iterate all lvl1 entries to find the first real faction (not unit type/scenery/etc.)
+      2. If lvl1 only has umbrella groupings (e.g. "Xenos Armies"), dig into lvl2 for the
+         specific army (e.g. "Aeldari").
+      3. If lvl1 only has non-faction terms (e.g. "Unit Type"), also dig into lvl2.
     """
     gs = hit.get("GameSystemsRoot")
     if not isinstance(gs, dict):
@@ -167,14 +205,60 @@ def _extract_game_system_faction(hit: dict) -> tuple[str | None, str | None]:
         val = lvl0[0] if isinstance(lvl0, list) else lvl0
         game_system = str(val).strip()
 
-    lvl1 = gs.get("lvl1", [])
-    if lvl1:
-        val = lvl1[0] if isinstance(lvl1, list) else lvl1
+    lvl1_raw = gs.get("lvl1", [])
+    if isinstance(lvl1_raw, str):
+        lvl1_raw = [lvl1_raw]
+
+    lvl2_raw = gs.get("lvl2", [])
+    if isinstance(lvl2_raw, str):
+        lvl2_raw = [lvl2_raw]
+
+    # Pass 1: scan lvl1 for a direct faction (e.g. "Space Marines", "Necromunda")
+    umbrella_found = None
+    for val in lvl1_raw:
         parts = str(val).split(" > ")
-        if len(parts) >= 2:
-            raw_faction = parts[1].strip()
-            if raw_faction.lower() not in SKIP_FACTION_TERMS | WH40K_UMBRELLA_TERMS:
-                faction = raw_faction
+        if len(parts) < 2:
+            continue
+        raw = parts[1].strip()
+        raw_lower = raw.lower()
+
+        if raw_lower in SKIP_FACTION_TERMS | WH40K_UMBRELLA_TERMS:
+            continue
+        if raw_lower in NON_FACTION_TERMS:
+            continue
+        if raw_lower in UMBRELLA_FACTION_TERMS:
+            # Remember the umbrella — we'll dig into lvl2 for the real faction
+            if not umbrella_found:
+                umbrella_found = raw
+            continue
+
+        # This is a real faction (e.g. "Space Marines", "Thousand Sons", "Necromunda")
+        faction = raw
+        break
+
+    # Pass 2: if no direct faction but we found an umbrella, dig into lvl2
+    if not faction and umbrella_found:
+        umbrella_lower = umbrella_found.lower()
+        for val in lvl2_raw:
+            parts = str(val).split(" > ")
+            if len(parts) >= 3 and parts[1].strip().lower() == umbrella_lower:
+                candidate = parts[2].strip()
+                # Skip unit-role terms that appear in lvl2 (e.g. "Infantry", "Character")
+                if candidate.lower() not in NON_FACTION_TERMS:
+                    faction = candidate
+                    break
+
+    # Pass 3: if still no faction (only "Unit Type" in lvl1), try lvl2 under any umbrella
+    if not faction:
+        for val in lvl2_raw:
+            parts = str(val).split(" > ")
+            if len(parts) >= 3:
+                mid = parts[1].strip().lower()
+                if mid in UMBRELLA_FACTION_TERMS:
+                    candidate = parts[2].strip()
+                    if candidate.lower() not in NON_FACTION_TERMS:
+                        faction = candidate
+                        break
 
     return game_system, faction
 
