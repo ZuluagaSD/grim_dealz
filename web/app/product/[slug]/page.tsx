@@ -159,9 +159,8 @@ export async function generateMetadata({
   const inStockCount = product.listings.filter((l) => l.inStock).length
 
   const ogTitle = `${product.name} — Price Comparison`
-  const ogImage = product.imageUrl
-    ? { url: product.imageUrl, width: 920, height: 950, alt: product.name }
-    : { url: '/og-default.png', width: 1200, height: 630, alt: 'GrimDealz' }
+  // Always use self-hosted OG image — GW's CDN blocks Twitter/social crawlers (content-length: 0)
+  const ogImage = { url: '/og-default.png', width: 1200, height: 630, alt: product.name }
 
   return {
     title: ogTitle,
