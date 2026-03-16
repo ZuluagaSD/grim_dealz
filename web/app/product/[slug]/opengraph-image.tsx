@@ -1,18 +1,18 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og'
 import { getProduct } from '@/lib/data'
 
 export const runtime = 'edge'
-export const revalidate = 14400 // 4h, matches product page ISR
+export const revalidate = 14400
 export const contentType = 'image/png'
 export const size = { width: 1200, height: 630 }
+export const alt = 'GrimDealz Product'
 
-// Fetch and convert the font at build/edge time
 async function loadFont(url: string): Promise<ArrayBuffer> {
   const res = await fetch(url)
   return res.arrayBuffer()
 }
 
-// Google Fonts CSS → extract woff2 URL
 async function getGoogleFontUrl(family: string, weight: number): Promise<string> {
   const res = await fetch(
     `https://fonts.googleapis.com/css2?family=${family}:wght@${weight}&display=swap`,
@@ -23,17 +23,24 @@ async function getGoogleFontUrl(family: string, weight: number): Promise<string>
   return match?.[1] ?? ''
 }
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { slug: string } }
-) {
+export default async function OgImage({ params }: { params: { slug: string } }) {
   const product = await getProduct(params.slug)
   if (!product) {
-    return new Response('Not found', { status: 404 })
+    return new ImageResponse(
+      (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0c0c0c', color: '#e8e0d0', fontSize: 48, fontFamily: 'Inter' }}>
+          Product not found
+        </div>
+      ),
+      { ...size }
+    )
   }
 
   const usdListings = product.listings.filter(
-    (l) => (l.store?.currency ?? l.currency ?? 'USD') === 'USD'
+    (l) => {
+      const currency = l.store?.currency ?? (l as Record<string, unknown>).currency ?? 'USD'
+      return currency === 'USD'
+    }
   )
   const cheapest = usdListings[0]
   const gwRrp = Number(product.gwRrpUsd)
@@ -43,13 +50,12 @@ export async function GET(
   const storeName = cheapest?.store?.name ?? null
   const storeCount = usdListings.length
 
-  // Load fonts
   const [cinzelData, interData] = await Promise.all([
     getGoogleFontUrl('Cinzel', 700).then(loadFont),
     getGoogleFontUrl('Inter', 600).then(loadFont),
   ])
 
-  // Proxy product image through our edge function (GW CDN blocks social crawlers)
+  // Proxy product image (GW CDN blocks social crawlers)
   let productImageSrc: string | null = null
   if (product.imageUrl) {
     try {
@@ -73,7 +79,6 @@ export async function GET(
           height: '100%',
           display: 'flex',
           backgroundColor: '#0c0c0c',
-          padding: '0',
         }}
       >
         {/* Left: Product image */}
@@ -132,7 +137,7 @@ export async function GET(
               color: '#c9a84c',
               fontFamily: 'Inter',
               fontWeight: 600,
-              textTransform: 'uppercase',
+              textTransform: 'uppercase' as const,
               letterSpacing: '2px',
               opacity: 0.8,
             }}
@@ -280,8 +285,8 @@ export async function GET(
     {
       ...size,
       fonts: [
-        { name: 'Cinzel', data: cinzelData, weight: 700, style: 'normal' },
-        { name: 'Inter', data: interData, weight: 600, style: 'normal' },
+        { name: 'Cinzel', data: cinzelData, weight: 700 as const, style: 'normal' as const },
+        { name: 'Inter', data: interData, weight: 600 as const, style: 'normal' as const },
       ],
     }
   )
