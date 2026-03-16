@@ -30,6 +30,7 @@ import psycopg
 from dotenv import load_dotenv
 
 from .base_store import PriceResult
+from .claude_matcher import claude_match_product
 
 load_dotenv()
 
@@ -250,27 +251,85 @@ async def _upsert_one(
     product_row = await _lookup_product(conn, result.gw_item_number)
 
     if product_row is None:
-        stats.unmatched.append(result.gw_item_number)
-        return
+        # No match by item number/catalog code — try Claude
+        if result.product_name:
+            logger.info(
+                "[%s] No DB match for %s (%r) — trying Claude",
+                store_slug, result.gw_item_number, result.product_name,
+            )
+            match = await claude_match_product(
+                conn, store_slug, result.gw_item_number, result.product_name,
+            )
+            if match.product_id and match.confidence >= 0.7:
+                row = await (
+                    await conn.execute(
+                        "SELECT id, gw_rrp_usd, name FROM products WHERE id = %s AND is_active = TRUE",
+                        (match.product_id,),
+                    )
+                ).fetchone()
+                if row:
+                    product_row = row
+                    logger.info(
+                        "[%s] Claude found match for %s: %r (%.0f%%)",
+                        store_slug, result.gw_item_number, row[2],
+                        match.confidence * 100,
+                    )
+                else:
+                    stats.unmatched.append(result.gw_item_number)
+                    return
+            else:
+                stats.unmatched.append(result.gw_item_number)
+                return
+        else:
+            stats.unmatched.append(result.gw_item_number)
+            return
 
     product_id: str = product_row[0]
     gw_rrp_usd: Decimal = Decimal(str(product_row[1]))
     db_product_name: str = product_row[2]
 
     # Name-mismatch guard: if the retailer's product title is available and
-    # doesn't resemble the catalog product name, skip the upsert.
-    # This catches cases where a catalog code was seeded incorrectly
-    # (e.g. "50-57" assigned to "Combat Patrol: Orks" when retailers sell
-    # "Ork Boyz" under that code).
+    # doesn't resemble the catalog product name, try Claude matching instead
+    # of blindly trusting the catalog code.
     if result.product_name:
         sim = _name_similarity(db_product_name, result.product_name)
         if sim < _NAME_SIMILARITY_THRESHOLD:
-            logger.warning(
-                "[%s] Name mismatch for %s: DB=%r vs scraped=%r (similarity=%.2f) — skipping upsert",
+            logger.info(
+                "[%s] Low similarity for %s: DB=%r vs scraped=%r (%.2f) — trying Claude",
                 store_slug, result.gw_item_number, db_product_name, result.product_name, sim,
             )
-            stats.unmatched.append(f"{result.gw_item_number}:name_mismatch")
-            return
+            # Ask Claude to find the correct match
+            match = await claude_match_product(
+                conn, store_slug, result.gw_item_number, result.product_name,
+            )
+            if match.product_id and match.confidence >= 0.7:
+                # Claude found a better match — use it
+                product_id = match.product_id
+                row = await (
+                    await conn.execute(
+                        "SELECT gw_rrp_usd, name FROM products WHERE id = %s",
+                        (product_id,),
+                    )
+                ).fetchone()
+                if row:
+                    gw_rrp_usd = Decimal(str(row[0]))
+                    db_product_name = row[1]
+                    logger.info(
+                        "[%s] Claude matched %r → %r (%.0f%%: %s)",
+                        store_slug, result.product_name, db_product_name,
+                        match.confidence * 100, match.reason,
+                    )
+                else:
+                    stats.unmatched.append(f"{result.gw_item_number}:claude_product_gone")
+                    return
+            else:
+                logger.warning(
+                    "[%s] Claude could not match %s: %r (reason: %s)",
+                    store_slug, result.gw_item_number, result.product_name,
+                    match.reason,
+                )
+                stats.unmatched.append(f"{result.gw_item_number}:name_mismatch")
+                return
     stats.matched += 1
 
     # 3. Compute discount_pct (products.gw_rrp_usd is the single source of truth)
