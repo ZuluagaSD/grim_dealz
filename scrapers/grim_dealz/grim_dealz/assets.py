@@ -28,6 +28,7 @@ from .notifications import send_price_alerts
 from .stores.discount_games_inc import DiscountGamesIncScraper
 from .stores.frontline_gaming import FrontlineGamingScraper
 from .stores.game_nerdz import GameNerdzScraper
+from .stores.goblin_gaming import GoblinGamingScraper
 from .stores.miniature_market import MiniatureMarketScraper
 
 logger = logging.getLogger(__name__)
@@ -190,6 +191,31 @@ def game_nerdz_listings(context) -> dict:
     }
 
 
+@asset(group_name="grim_dealz", deps=[enrich_catalog_codes_asset])
+def goblin_gaming_listings(context) -> dict:
+    """Scrape and upsert GW prices from Goblin Gaming (UK, GBP)."""
+    async def _run():
+        async with GoblinGamingScraper() as scraper:
+            return await stream_upsert(scraper.store_slug, scraper.scrape(), log=context.log)
+
+    stats = _run_async(_run())
+    context.add_output_metadata({
+        "total_scraped": stats.total_scraped,
+        "matched": stats.matched,
+        "upserted": stats.upserted,
+        "price_changes": stats.price_changes,
+        "errors": len(stats.errors),
+    })
+    return {
+        "store_slug": stats.store_slug,
+        "total_scraped": stats.total_scraped,
+        "matched": stats.matched,
+        "upserted": stats.upserted,
+        "price_changes": stats.price_changes,
+        "errors": len(stats.errors),
+    }
+
+
 @asset(group_name="grim_dealz")
 def revalidate_cache(
     context,
@@ -197,6 +223,7 @@ def revalidate_cache(
     discount_games_inc_listings: dict,
     frontline_gaming_listings: dict,
     game_nerdz_listings: dict,
+    goblin_gaming_listings: dict,
 ) -> None:
     """Post ISR revalidation webhook to Next.js after all stores are scraped.
 
@@ -212,6 +239,7 @@ def revalidate_cache(
         discount_games_inc_listings,
         frontline_gaming_listings,
         game_nerdz_listings,
+        goblin_gaming_listings,
     ]
     changed_stores = [
         s["store_slug"] for s in all_stats

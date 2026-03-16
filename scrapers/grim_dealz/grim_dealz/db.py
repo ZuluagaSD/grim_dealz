@@ -74,18 +74,18 @@ _MAX_RETRIES = 3
 _RETRY_BACKOFF_BASE = 2  # seconds
 
 
-async def _connect_and_get_store_id(store_slug: str) -> tuple[psycopg.AsyncConnection, str]:
-    """Connect to DB and resolve store_id. Raises if store not found."""
+async def _connect_and_get_store_id(store_slug: str) -> tuple[psycopg.AsyncConnection, str, str]:
+    """Connect to DB and resolve store_id and currency. Raises if store not found."""
     conn = await psycopg.AsyncConnection.connect(_get_dsn())
     row = await conn.execute(
-        "SELECT id FROM stores WHERE slug = %s AND is_active = TRUE",
+        "SELECT id, COALESCE(currency, 'USD') FROM stores WHERE slug = %s AND is_active = TRUE",
         (store_slug,),
     )
     store_row = await row.fetchone()
     if store_row is None:
         await conn.close()
         raise ValueError(f"Store not found or inactive: {store_slug!r}")
-    return conn, store_row[0]
+    return conn, store_row[0], store_row[1]
 
 
 async def _upsert_batch_with_retry(
@@ -95,6 +95,7 @@ async def _upsert_batch_with_retry(
     stats: UpsertStats,
     conn: psycopg.AsyncConnection | None,
     log=None,
+    currency: str = "USD",
 ) -> psycopg.AsyncConnection:
     """Upsert a batch with retry logic. Returns the (possibly new) connection."""
     _log = log or logger
@@ -116,7 +117,7 @@ async def _upsert_batch_with_retry(
             # Try to upsert the batch
             for result in batch:
                 try:
-                    await _upsert_one(conn, store_slug, store_id, result, stats)
+                    await _upsert_one(conn, store_slug, store_id, result, stats, currency=currency)
                 except psycopg.OperationalError:
                     raise  # Re-raise connection errors to trigger retry
                 except Exception as exc:
@@ -162,13 +163,13 @@ async def stream_upsert(
     stats = UpsertStats(store_slug=store_slug)
     _log = log or logger
     
-    conn, store_id = await _connect_and_get_store_id(store_slug)
+    conn, store_id, currency = await _connect_and_get_store_id(store_slug)
     
     try:
         async for batch in scrape_iter:
             stats.total_scraped += len(batch)
             conn = await _upsert_batch_with_retry(
-                store_slug, store_id, batch, stats, conn, log
+                store_slug, store_id, batch, stats, conn, log, currency=currency
             )
             _log.info(
                 "[%s] batch done — scraped=%d upserted=%d price_changes=%d",
@@ -217,23 +218,37 @@ def _is_catalog_code(identifier: str) -> bool:
     return bool(_CATALOG_CODE_RE.match(identifier))
 
 
+# Map store currency → product RRP column name
+_CURRENCY_RRP_COLUMN = {
+    "USD": "gw_rrp_usd",
+    "GBP": "gw_rrp_gbp",
+    "EUR": "gw_rrp_eur",
+    "AUD": "gw_rrp_aud",
+    "CAD": "gw_rrp_cad",
+}
+
+
 async def _lookup_product(
     conn: psycopg.AsyncConnection,
     identifier: str,
+    currency: str = "USD",
 ) -> tuple[str, Decimal, str] | None:
     """Look up a product by either gw_catalog_code (XX-XX) or gw_item_number (11-digit).
 
-    Returns (product_id, gw_rrp_usd, name) or None if not found.
+    Returns (product_id, gw_rrp, name) or None if not found.
+    Uses the RRP column matching the store's currency, falling back to gw_rrp_usd.
     """
     if _is_catalog_code(identifier):
         col = "gw_catalog_code"
     else:
         col = "gw_item_number"
 
-    # Column name is safe (hardcoded above), not user input
+    rrp_col = _CURRENCY_RRP_COLUMN.get(currency, "gw_rrp_usd")
+
+    # Column names are safe (hardcoded above), not user input
     row = await (
         await conn.execute(
-            f"SELECT id, gw_rrp_usd, name FROM products WHERE {col} = %s AND is_active = TRUE",
+            f"SELECT id, COALESCE({rrp_col}, gw_rrp_usd), name FROM products WHERE {col} = %s AND is_active = TRUE",
             (identifier,),
         )
     ).fetchone()
@@ -246,9 +261,10 @@ async def _upsert_one(
     store_id: str,
     result: PriceResult,
     stats: UpsertStats,
+    currency: str = "USD",
 ) -> None:
     # 2. Look up product by gw_catalog_code (XX-XX) or gw_item_number (11-digit)
-    product_row = await _lookup_product(conn, result.gw_item_number)
+    product_row = await _lookup_product(conn, result.gw_item_number, currency=currency)
 
     if product_row is None:
         # No match by item number/catalog code — try Claude
@@ -261,9 +277,10 @@ async def _upsert_one(
                 conn, store_slug, result.gw_item_number, result.product_name,
             )
             if match.product_id and match.confidence >= 0.7:
+                rrp_col = _CURRENCY_RRP_COLUMN.get(currency, "gw_rrp_usd")
                 row = await (
                     await conn.execute(
-                        "SELECT id, gw_rrp_usd, name FROM products WHERE id = %s AND is_active = TRUE",
+                        f"SELECT id, COALESCE({rrp_col}, gw_rrp_usd), name FROM products WHERE id = %s AND is_active = TRUE",
                         (match.product_id,),
                     )
                 ).fetchone()
@@ -285,7 +302,7 @@ async def _upsert_one(
             return
 
     product_id: str = product_row[0]
-    gw_rrp_usd: Decimal = Decimal(str(product_row[1]))
+    gw_rrp: Decimal = Decimal(str(product_row[1]))  # regional RRP (GBP/EUR/etc or USD)
     db_product_name: str = product_row[2]
 
     # Name-mismatch guard: if the retailer's product title is available and
@@ -307,12 +324,12 @@ async def _upsert_one(
                 product_id = match.product_id
                 row = await (
                     await conn.execute(
-                        "SELECT gw_rrp_usd, name FROM products WHERE id = %s",
+                        f"SELECT COALESCE({_CURRENCY_RRP_COLUMN.get(currency, 'gw_rrp_usd')}, gw_rrp_usd), name FROM products WHERE id = %s",
                         (product_id,),
                     )
                 ).fetchone()
                 if row:
-                    gw_rrp_usd = Decimal(str(row[0]))
+                    gw_rrp = Decimal(str(row[0]))
                     db_product_name = row[1]
                     logger.info(
                         "[%s] Claude matched %r → %r (%.0f%%: %s)",
@@ -332,21 +349,21 @@ async def _upsert_one(
                 return
     stats.matched += 1
 
-    # 3. Compute discount_pct (products.gw_rrp_usd is the single source of truth)
+    # 3. Compute discount_pct (regional RRP is the source of truth)
     current_price = Decimal(str(result.current_price))
-    if gw_rrp_usd > 0:
-        discount_pct = (gw_rrp_usd - current_price) / gw_rrp_usd * 100
+    if gw_rrp > 0:
+        discount_pct = (gw_rrp - current_price) / gw_rrp * 100
     else:
         discount_pct = Decimal("0")
     discount_pct = discount_pct.quantize(Decimal("0.01"))
 
     # Price sanity check — extreme discounts likely indicate a catalog code mismatch.
-    # Does not block the upsert; emits a warning for manual review in Dagster logs.
-    if gw_rrp_usd > 0 and discount_pct > 85:
+    if gw_rrp > 0 and discount_pct > 85:
+        currency_symbol = {"GBP": "£", "EUR": "€", "AUD": "A$", "CAD": "C$"}.get(currency, "$")
         logger.warning(
-            "[%s] Extreme discount for %s (%s): %.0f%% off RRP ($%.2f vs $%.2f) — possible mismatch",
+            "[%s] Extreme discount for %s (%s): %.0f%% off RRP (%s%.2f vs %s%.2f) — possible mismatch",
             store_slug, result.gw_item_number, db_product_name,
-            discount_pct, current_price, gw_rrp_usd,
+            discount_pct, currency_symbol, current_price, currency_symbol, gw_rrp,
         )
 
     in_stock = result.in_stock
@@ -376,7 +393,7 @@ async def _upsert_one(
                 store_product_url, store_sku,
                 current_price, discount_pct,
                 in_stock, stock_status,
-                affiliate_url,
+                affiliate_url, currency,
                 last_scraped, last_checked_at
             )
             VALUES (
@@ -384,7 +401,7 @@ async def _upsert_one(
                 %s, %s,
                 %s, %s,
                 %s, %s::\"StockStatus\",
-                %s,
+                %s, %s,
                 NOW(), NOW()
             )
             ON CONFLICT (product_id, store_id) DO UPDATE SET
@@ -395,6 +412,7 @@ async def _upsert_one(
                 in_stock           = EXCLUDED.in_stock,
                 stock_status       = EXCLUDED.stock_status,
                 affiliate_url      = EXCLUDED.affiliate_url,
+                currency           = EXCLUDED.currency,
                 last_scraped       = NOW(),
                 last_checked_at    = NOW()
             RETURNING id
@@ -404,7 +422,7 @@ async def _upsert_one(
                 result.store_product_url, result.store_sku,
                 current_price, discount_pct,
                 in_stock, stock_status,
-                result.affiliate_url,
+                result.affiliate_url, currency,
             ),
         )
     ).fetchone()
