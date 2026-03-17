@@ -31,8 +31,13 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   return {
     rules: [
       {
+        userAgent: 'Twitterbot',
+        allow: ['/api/og'],
+        disallow: ['/go/', '/admin/'],
+      },
+      {
         userAgent: '*',
-        allow: ['/', '/api/og'],
+        allow: '/',
         disallow: ['/go/', '/api/', '/admin/'],
       },
     ],
