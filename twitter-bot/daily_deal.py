@@ -93,7 +93,7 @@ def build_tweet(deal: dict) -> str:
         store=deal["store"],
         pct=deal["pct"],
         savings=f"{savings:.2f}",
-        url=f"{SITE_URL}/product/{deal['slug']}",
+        url=f"{SITE_URL}/product/{deal['slug']}?ref=x",
     )
 
 
