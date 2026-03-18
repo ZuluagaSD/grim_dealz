@@ -6,7 +6,7 @@ import type { FactionSummary } from '@/lib/types'
 
 export const revalidate = 86400
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.grimdealz.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://grimdealz.com'
 
 export const metadata: Metadata = {
   title: 'All Warhammer Factions — Browse Prices by Faction',

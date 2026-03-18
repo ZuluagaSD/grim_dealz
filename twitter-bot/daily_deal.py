@@ -20,7 +20,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("grimdealz-daily")
 
-SITE_URL = os.getenv("SITE_URL", "https://www.grimdealz.com")
+SITE_URL = os.getenv("SITE_URL", "https://grimdealz.com")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
