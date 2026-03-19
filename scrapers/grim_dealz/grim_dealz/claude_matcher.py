@@ -14,7 +14,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 import httpx
 import psycopg
@@ -24,6 +26,24 @@ logger = logging.getLogger(__name__)
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL = "claude-3-haiku-20240307"
 API_URL = "https://api.anthropic.com/v1/messages"
+
+_GAME_PREFIX_RE = re.compile(
+    r"^(warhammer\s+40[,.]?000\s*:?\s*|warhammer\s+40k\s*:?\s*|"
+    r"age\s+of\s+sigmar\s*:?\s*|the\s+horus\s+heresy\s*:?\s*|"
+    r"the\s+old\s+world\s*:?\s*|warhammer\s*:?\s*|"
+    r"games\s+workshop\s*:?\s*|gw\s*:?\s*)",
+    re.IGNORECASE,
+)
+_CACHE_SIMILARITY_THRESHOLD = 0.4  # Lower than matching threshold — just catch obvious mismatches
+
+
+def _name_similarity(a: str, b: str) -> float:
+    """Fuzzy match between two product names, stripping game-system prefixes."""
+    def normalize(s: str) -> str:
+        s = _GAME_PREFIX_RE.sub("", s).lower()
+        s = re.sub(r"[^\w\s]", " ", s)
+        return " ".join(s.split())
+    return SequenceMatcher(None, normalize(a), normalize(b)).ratio()
 
 
 @dataclass
@@ -177,13 +197,26 @@ async def claude_match_product(
     # Check cache
     cached_id = await get_cached_match(conn, store_slug, retailer_code, retailer_name)
     if cached_id:
-        logger.debug("[claude] Cache hit for %s/%s → %s", store_slug, retailer_code, cached_id)
         row = await (
             await conn.execute("SELECT name FROM products WHERE id = %s", (cached_id,))
         ).fetchone()
-        return MatchResult(cached_id, row[0] if row else None, 1.0, "cached")
-
-    if await get_cached_rejection(conn, store_slug, retailer_code):
+        if row:
+            cached_name = row[0]
+            sim = _name_similarity(cached_name, retailer_name)
+            if sim >= _CACHE_SIMILARITY_THRESHOLD:
+                logger.debug("[claude] Cache hit for %s/%s → %s", store_slug, retailer_code, cached_id)
+                return MatchResult(cached_id, cached_name, 1.0, "cached")
+            else:
+                # Cached match is stale — retailer name changed or code was reassigned
+                logger.info(
+                    "[claude] Stale cache for %s/%s: cached=%r vs current=%r (sim=%.2f) — re-matching",
+                    store_slug, retailer_code, cached_name, retailer_name, sim,
+                )
+                # Fall through to re-match with Claude
+        else:
+            logger.info("[claude] Cached product gone for %s/%s — re-matching", store_slug, retailer_code)
+            # Fall through to re-match
+    elif await get_cached_rejection(conn, store_slug, retailer_code):
         logger.debug("[claude] Cached rejection for %s/%s", store_slug, retailer_code)
         return MatchResult(None, None, 0.0, "cached_rejection")
 

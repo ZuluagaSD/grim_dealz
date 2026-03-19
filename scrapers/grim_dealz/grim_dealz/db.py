@@ -363,13 +363,16 @@ async def _upsert_one(
     discount_pct = discount_pct.quantize(Decimal("0.01"))
 
     # Price sanity check — extreme discounts likely indicate a catalog code mismatch.
-    if gw_rrp > 0 and discount_pct > 85:
+    # No legitimate GW retailer offers >50% off RRP. Reject these outright.
+    if gw_rrp > 0 and discount_pct > 50:
         currency_symbol = {"GBP": "£", "EUR": "€", "AUD": "A$", "CAD": "C$"}.get(currency, "$")
         logger.warning(
-            "[%s] Extreme discount for %s (%s): %.0f%% off RRP (%s%.2f vs %s%.2f) — possible mismatch",
+            "[%s] Rejecting %s (%s): %.0f%% off RRP (%s%.2f vs %s%.2f) — likely mismatch",
             store_slug, result.gw_item_number, db_product_name,
             discount_pct, currency_symbol, current_price, currency_symbol, gw_rrp,
         )
+        stats.unmatched.append(f"{result.gw_item_number}:extreme_discount_{discount_pct:.0f}pct")
+        return
 
     in_stock = result.in_stock
     stock_status = result.stock_status.value  # str for psycopg
