@@ -26,12 +26,45 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # Tweet templates — rotate to keep it fresh
 TEMPLATES = [
-    "🔥 {name} — ${price} at {store} ({pct}% off GW RRP)\n\n{url}",
-    "{name} for ${price} ({pct}% off) at {store}\n\n{url}",
-    "💀 ${savings} off {name} at {store} — ${price} vs ${rrp} RRP\n\n{url}",
-    "{name} — ${price} at {store}. GW charges ${rrp}. That's {pct}% less.\n\n{url}",
-    "Deal: {name} for ${price} at {store} (save ${savings})\n\n{url}",
+    "🔥 {name} — ${price} at {store} ({pct}% off GW RRP)\n\n{url}\n\n{tags}",
+    "{name} for ${price} ({pct}% off) at {store}\n\n{url}\n\n{tags}",
+    "💀 ${savings} off {name} at {store} — ${price} vs ${rrp} RRP\n\n{url}\n\n{tags}",
+    "{name} — ${price} at {store}. GW charges ${rrp}. That's {pct}% less.\n\n{url}\n\n{tags}",
+    "Deal: {name} for ${price} at {store} (save ${savings})\n\n{url}\n\n{tags}",
 ]
+
+# Map game_system + faction to hashtags
+_GAME_TAGS = {
+    "Warhammer 40,000": "#Warhammer40k",
+    "Age of Sigmar": "#AgeOfSigmar #AoS",
+    "The Horus Heresy": "#HorusHeresy #30k",
+    "The Old World": "#TheOldWorld #WarhammerTheOldWorld",
+    "Middle-earth": "#MiddleEarth #MESBG",
+    "Kill Team": "#KillTeam #Warhammer40k",
+    "Necromunda": "#Necromunda",
+    "Blood Bowl": "#BloodBowl",
+    "Warcry": "#Warcry #AgeOfSigmar",
+    "Underworlds": "#WarhammerUnderworlds",
+}
+
+
+def _build_tags(game_system: str | None, faction: str | None) -> str:
+    """Build hashtag string from game system and faction."""
+    tags = []
+
+    # Game system tag
+    if game_system:
+        tags.append(_GAME_TAGS.get(game_system, f"#{game_system.replace(' ', '')}"))
+
+    # Faction tag — sanitize to hashtag format
+    if faction and faction not in ("Gameplay Accessories", "Unit Type"):
+        faction_tag = "#" + faction.replace(" ", "").replace("-", "").replace("'", "")
+        tags.append(faction_tag)
+
+    # Always include these
+    tags.extend(["#WarhammerDeals", "#GrimDealz"])
+
+    return " ".join(tags)
 
 
 def get_best_deals(limit=5):
@@ -46,7 +79,9 @@ def get_best_deals(limit=5):
                     p.gw_rrp_usd,
                     l.current_price,
                     s.name AS store_name,
-                    ROUND((1 - l.current_price / p.gw_rrp_usd) * 100) AS discount_pct
+                    ROUND((1 - l.current_price / p.gw_rrp_usd) * 100) AS discount_pct,
+                    p.game_system,
+                    p.faction
                 FROM listings l
                 JOIN products p ON p.id = l.product_id
                 JOIN stores s ON s.id = l.store_id
@@ -76,6 +111,8 @@ def get_best_deals(limit=5):
             "price": float(r[3]),
             "store": r[4],
             "pct": int(r[5]),
+            "game_system": r[6],
+            "faction": r[7],
         }
         for r in rows[:limit]
     ]
@@ -86,6 +123,8 @@ def build_tweet(deal: dict) -> str:
     template = random.choice(TEMPLATES)
     savings = deal["rrp"] - deal["price"]
 
+    tags = _build_tags(deal.get("game_system"), deal.get("faction"))
+
     return template.format(
         name=deal["name"],
         price=f"{deal['price']:.2f}",
@@ -93,7 +132,8 @@ def build_tweet(deal: dict) -> str:
         store=deal["store"],
         pct=deal["pct"],
         savings=f"{savings:.2f}",
-        url=f"{SITE_URL}/product/{deal['slug']}?ref=x",
+        url=f"{SITE_URL}/product/{deal['slug']}",
+        tags=tags,
     )
 
 
