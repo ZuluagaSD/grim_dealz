@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 /**
  * Redirect www → non-www to consolidate link equity and avoid
  * duplicate-URL issues in Google Search Console.
+ *
+ * Runs on ALL paths (including static assets) so that
+ * www.grimdealz.com/_next/static/... also redirects.
  */
 export function middleware(request: NextRequest) {
   const host = request.headers.get('host') ?? ''
@@ -17,6 +20,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all paths except Next.js internals and static files
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|site.webmanifest).*)'],
+  // Match all paths — www redirect must apply to static assets too
+  matcher: ['/(.*)',],
 }
