@@ -97,7 +97,7 @@ export default async function sitemap({
     return [...staticPages, ...gamePages, ...gameDealsPages, ...factionPages, ...blogPages]
   }
 
-  // Product pages — only products with 2+ in-stock listings from active stores.
+  // Product pages — only products with MIN_LISTINGS_FOR_INDEX+ in-stock listings from active stores.
   // Uses listing lastCheckedAt for accurate lastModified signal.
   const skip = (id - 1) * PRODUCTS_PER_SITEMAP
   type Row = { slug: string; last_checked: Date | null }
